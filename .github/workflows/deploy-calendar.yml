@@ -1,0 +1,82 @@
+name: Deploy Calendar to GitHub Pages
+
+on:
+  schedule:
+    - cron: '0 6 * * *'  # Daily at 06:00 UTC — sync + rebuild
+  push:
+    branches: [main]
+    paths:
+      - 'calendar/**'
+      - '.github/workflows/deploy-calendar.yml'
+  workflow_dispatch:
+
+# Allow only one concurrent deployment
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # Skip push events triggered by the bot's own sync commit to avoid an
+    # infinite deploy loop; scheduled and manual dispatches always proceed.
+    if: github.event_name != 'push' || github.actor != 'github-actions[bot]'
+    permissions:
+      contents: write  # needed to commit synced calendar data back to the repo
+      issues: read     # needed to read issue counts for the % completion column
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Sync calendar data from mcphersonlab/mcphersonlab.github.io
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+        env:
+          # Use a PAT (if configured) so completion works for internal repos.
+          GITHUB_TOKEN: ${{ secrets.CALENDAR_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+        run: python calendar/sync_calendar.py
+
+      - name: Commit synced changes (if any)
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add calendar/index.qmd
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: sync calendar from mcphersonlab/mcphersonlab.github.io"
+            git push
+          else
+            echo "No calendar changes to commit"
+          fi
+
+      - name: Set up Quarto
+        uses: quarto-dev/quarto-actions/setup@v2
+        with:
+          version: 1.5.57
+
+      - name: Render calendar
+        run: quarto render calendar/
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: calendar/_site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

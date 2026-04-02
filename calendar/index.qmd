@@ -1,0 +1,1813 @@
+---
+format:
+  html:
+    include-in-header:
+      - text: |
+          <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" rel="stylesheet"/>
+          <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+---
+
+::: {.calendar-wrap}
+
+<div class="calendar-layout">
+<div class="calendar-sidebar calendar-sidebar-left" role="complementary" aria-labelledby="agenda-title">
+<section class="calendar-panel agenda-panel">
+<h2 id="agenda-title">Day's Agenda</h2>
+<p class="calendar-panel-note">Track what's open now and what's coming up next.</p>
+<div id="agenda-active" class="agenda-sections"></div>
+</section>
+</div>
+
+<div class="calendar-main">
+<div id="calendar"></div>
+<section id="projects-section" aria-labelledby="projects-title">
+<h2 id="projects-title">Current Active Projects</h2>
+<p class="projects-note">
+Synced from <a href="https://mcphersonlab.github.io/research/projects" target="_blank" rel="noopener noreferrer">mcphersonlab.github.io/research/projects</a>.
+</p>
+<div class="projects-table-wrapper">
+<table id="projects-table" class="projects-table">
+<thead>
+<tr>
+<th>Project (Link)</th>
+<th>Question</th>
+<th>Target Conference</th>
+<th>
+<button type="button" class="table-sort" data-sort-key="call" onclick="setProjectsSort('call')">
+Call for Paper <span class="sort-indicator" aria-hidden="true">↕</span>
+</button>
+</th>
+<th>Big Name Journal</th>
+<th>
+<button type="button" class="table-sort" data-sort-key="completion" onclick="setProjectsSort('completion')">
+% Completion <span class="sort-indicator" aria-hidden="true">↕</span>
+</button>
+</th>
+</tr>
+</thead>
+<tbody id="projects-tbody">
+</tbody>
+</table>
+</div>
+</section>
+
+<!-- ── Calls for Papers without linked projects ─────────────── -->
+<section id="unlinked-cfps-section" aria-labelledby="unlinked-cfps-title">
+<h2 id="unlinked-cfps-title">Calls for Papers</h2>
+<p class="projects-note">
+Calls for papers from <a href="https://mcphersonlab.github.io/research" target="_blank" rel="noopener noreferrer">mcphersonlab.github.io/research</a> that do not yet have a linked active project.
+</p>
+<div class="projects-table-wrapper">
+<table id="unlinked-cfps-table" class="projects-table">
+<thead>
+<tr>
+<th>Call for Papers</th>
+<th>Journal</th>
+<th>
+<button type="button" class="table-sort" data-sort-key="impact" onclick="setUnlinkedCfpsSort('impact')">
+IF <span class="sort-indicator" aria-hidden="true">↕</span>
+</button>
+</th>
+<th>
+<button type="button" class="table-sort" data-sort-key="date" onclick="setUnlinkedCfpsSort('date')">
+Deadline <span class="sort-indicator" aria-hidden="true">↕</span>
+</button>
+</th>
+</tr>
+</thead>
+<tbody id="unlinked-cfps-tbody">
+</tbody>
+</table>
+</div>
+</section>
+</div>
+
+<div class="calendar-sidebar calendar-sidebar-right calendar-sidebar-stack" role="complementary" aria-labelledby="calendar-filters-title">
+<section class="calendar-panel">
+<h2 id="calendar-filters-title">Events Calendar</h2>
+<p class="calendar-panel-note">Show:</p>
+<div class="filter-bar" id="filter-bar">
+<label class="filter-nih">
+<input type="checkbox" id="chk-nih" checked onchange="applyFilters()">
+<span class="legend-dot" style="background:#BF5700;"></span> NIH Grant Deadlines
+</label>
+<label class="filter-conference">
+<input type="checkbox" id="chk-conference" checked onchange="applyFilters()">
+<span class="legend-dot" style="background:#0d6efd;"></span> Conferences
+</label>
+<label class="filter-abstract">
+<input type="checkbox" id="chk-abstract" checked onchange="applyFilters()">
+<span class="legend-dot" style="background:rgba(13,202,240,0.1);"></span> Abstracts
+</label>
+<label class="filter-cfp">
+<input type="checkbox" id="chk-cfp" checked onchange="applyFilters()">
+<span class="legend-dot" style="background:#dc3545;"></span> Calls for Papers
+</label>
+<label class="filter-lablife">
+<input type="checkbox" id="chk-lablife" checked onchange="applyFilters()">
+<span class="legend-dot" style="background:rgba(25,135,84,0.1);"></span> Lab Life
+</label>
+<label class="filter-venue">
+<input type="checkbox" id="chk-venue" checked onchange="applyFilters()">
+<span class="legend-dot" style="background:rgba(111,66,193,0.1);"></span> Venues
+</label>
+<label class="filter-trainee">
+<input type="checkbox" id="chk-trainee" checked onchange="applyFilters()">
+<span class="legend-dot" style="background:rgba(102,16,242,0.12);"></span> Trainee Deadlines
+</label>
+</div>
+</section>
+<section class="calendar-panel" aria-labelledby="agenda-done-title">
+<h3 id="agenda-done-title">Done</h3>
+<div id="agenda-done" class="agenda-sections"></div>
+</section>
+</div>
+</div>
+
+<!-- ── Event detail modal ───────────────────────────────────── -->
+<div id="event-modal-overlay">
+<div id="event-modal">
+<button id="event-modal-close" onclick="closeModal()" aria-label="Close">×</button>
+<div id="event-modal-colorbar"></div>
+<h4 id="modal-title"></h4>
+<table id="modal-table"></table>
+</div>
+</div>
+
+:::
+
+```{=html}
+<script>
+// ================================================================
+//  EVENT DATA
+// ================================================================
+
+// ── 1. Academic Conferences (from mcphersonlab.github.io/research) ──
+const conferences = [
+  { title:"Staphylococcal Diseases Gordon Research Conference", start:"2027-08-08", end:"2027-08-14", location:"Waterville Valley, NH, USA", url:"https://www.grc.org/staphylococcal-diseases-conference/2027/", cfpNote:"2027 abstract dates TBD; check GRC website" },
+  { title:"ClostPath Biennial", start:"2027-09-01", end:"2027-09-05", location:"Paris, France (2027 TBD)", url:"https://www.clostpath2025.conferences-pasteur.org/", cfpNote:"2027 dates and location TBD (biennial); map shows 2025 host city" },
+  { title:"Peggy Lillis Foundation National C. diff Summit", start:"2026-04-13", end:"2026-04-14", location:"Washington, DC", url:"https://cdiff.org/event/summit26/" },
+  { title:"BPS Annual", start:"2026-12-08", end:"2026-12-11", location:"Manchester, UK", url:"https://www.bps.ac.uk/events", cfpOpen:"2026-04-01", cfpClose:"2026-09-01", cfpNote:"See BPS website for abstract dates and details" },
+  { title:"TMC AMR", start:"2027-01-13", end:"2027-01-16", location:"Houston, TX", url:"https://www.tmc.edu/events/", cfpNote:"10th Annual; 2027 dates TBD (typically mid-January)" },
+  { title:"IMARI Annual", start:"2027-01-27", end:"2027-01-30", location:"Las Vegas, NV", url:"https://imari.org", cfpNote:"2027 dates TBD; check IMARI website" },
+  { title:"BSAC and GARDP Antimicrobial Chemotherapy Conference", start:"2027-02-03", end:"2027-02-05", location:"Online", url:"https://acc-conference.com/", cfpNote:"2027 dates TBD; free online conference" },
+  { title:"AAAS Annual", start:"2027-02-18", end:"2027-02-21", location:"Chicago, IL", url:"https://meetings.aaas.org/", cfpNote:"Abstract dates TBD; check AAAS website" },
+  { title:"CSIRO AMR Summit", start:"2027-02-17", end:"2027-02-20", location:"Sydney, Australia", url:"https://www.csiro.au/en/about/challenges-missions/antimicrobial-resistance/amr-summit", cfpNote:"2027 dates TBD; invitation-only event" },
+  { title:"Biophysical Society Annual", start:"2027-02-20", end:"2027-02-25", location:"Philadelphia, PA", url:"https://www.biophysics.org/upcoming-annual-meetings", cfpNote:"Abstract dates TBD; see Biophysical Society website for updates" },
+  { title:"CROI Annual", start:"2027-03-21", end:"2027-03-25", location:"San Diego, CA", url:"https://www.croiconference.org/", cfpNote:"Abstract dates TBD; check CROI website" },
+  { title:"ASBMB Annual", start:"2026-03-07", end:"2026-03-11", location:"Washington, DC", url:"https://www.asbmb.org/annual-meeting" },
+  { title:"EMBL AI and Biology", start:"2026-03-10", end:"2026-03-14", location:"EMBL Heidelberg and Online", url:"https://www.embl.org/about/info/course-and-conference-office/events/ees26-02/" },
+  { title:"ESCMID Annual", start:"2026-04-17", end:"2026-04-22", location:"Munich, Germany", url:"https://www.escmid.org/congress-events/escmid-global/", cfpOpen:"2025-10-15", cfpClose:"2025-11-26" },
+  { title:"TSHP/GCSHP Annual Seminar", start:"2026-04-24", end:"2026-04-27", location:"Galveston, TX", url:"https://tshp.org/mpage/as26" },
+  { title:"Houston C diff & Microbiome Conference", start:"2026-04-30", end:"2026-05-01", location:"Houston, TX", url:"https://www.uh.edu/pharmacy/news-and-events/events/houston-cdiff-and-microbiome-conference/", cfpOpen:"2026-02-14", cfpClose:"2026-03-31" },
+  { title:"MAD-ID (SIDP)", start:"2026-05-14", end:"2026-05-18", location:"Orlando, Florida", url:"https://www.mad-id.org/annual-meeting-1", cfpNote:"See conference website for abstract dates and details" },
+  { title:"ASPET Annual", start:"2026-05-17", end:"2026-05-21", location:"Minneapolis, MN", url:"https://www.aspet.org/aspet/meetings-awards", cfpOpen:"2025-09-22", cfpClose:"2025-12-04" },
+  { title:"ISPOR Annual", start:"2026-05-17", end:"2026-05-21", location:"Philadelphia, PA", url:"https://www.ispor.org/conferences-education", cfpOpen:"2025-10-31", cfpClose:"2026-01-09" },
+  { title:"ASM Microbe", start:"2026-06-11", end:"2026-06-16", location:"Washington, DC", url:"https://asm.org/events/asm-microbe", cfpOpen:"2025-10-15", cfpClose:"2026-01-21", cfpNote:"Travel awards: Oct 15 - Dec 2, 2025; Abstracts: Dec 2, 2025 - Jan 21, 2026" },
+  { title:"Anaerobe Biennial", start:"2026-07-07", end:"2026-07-11", location:"New York, NY, USA", url:"http://www.anaerobe.org/2026/", cfpOpen:"2025-10-23", cfpClose:"2026-02-01", cfpNote:"Oral: Jan 1, 2026; Poster: Feb 1, 2026" },
+  { title:"IUPHAR Annual", start:"2026-07-12", end:"2026-07-18", location:"Melbourne, Australia", url:"https://www.iuphar.org/", cfpOpen:"2025-02-01", cfpClose:"2025-09-15" },
+  { title:"AACP Pharmacy Education", start:"2026-07-18", end:"2026-07-22", location:"Grapevine, TX", url:"https://www.aacp.org/events/annual-meetings" },
+  { title:"Conference on Beneficial Microbes", start:"2026-07-19", end:"2026-07-24", location:"Madison, WI", url:"https://conferences.union.wisc.edu/microbes/", cfpOpen:"2026-02-01", cfpClose:"2026-04-08" },
+  { title:"ASV Annual", start:"2026-07-27", end:"2026-07-31", location:"Minneapolis, MN", url:"https://www.asv.org/annual-meeting", cfpOpen:"2025-12-01", cfpClose:"2026-02-01" },
+  { title:"STI Prevention Conference", start:"2026-09-01", end:"2026-09-02", location:"TBD", url:"https://stipreventionconference.org/", cfpNote:"2026 dates and location to be announced" },
+  { title:"The 9th International C. difficile Symposium (ICDS)", start:"2026-09-08", end:"2026-09-11", location:"Bled, Slovenia", url:"https://www.icds.si/", cfpOpen:"2026-03-10", cfpClose:"2026-05-15" },
+  { title:"MSGERC Biennial", start:"2026-09-09", end:"2026-09-12", location:"Denver, CO", url:"https://msgerc.org/2026-biennial-meeting/", cfpOpen:"2026-04-01", cfpClose:"2026-07-31" },
+  { title:"Rice AI in Health", start:"2026-09-14", end:"2026-09-18", location:"Houston, TX", url:"https://www.aihealthconference.com/" },
+  { title:"ESCV Annual", start:"2026-09-16", end:"2026-09-20", location:"Porto, Portugal", url:"https://escv.eu/calendar-events/", cfpOpen:"2026-02-02", cfpClose:"2026-05-11" },
+  { title:"Global AMR Innovators' Conference (GAMRIC)", start:"2026-09-22", end:"2026-09-25", location:"Lisbon, Portugal", url:"https://www.gamric.org/", cfpOpen:"2026-03-10", cfpClose:"2026-03-31" },
+  { title:"North American Cystic Fibrosis (CF) Conference", start:"2026-10-07", end:"2026-10-11", location:"Atlanta, Georgia", url:"https://www.nacfconference.org/", cfpOpen:"2026-03-17", cfpClose:"2026-04-17" },
+  { title:"IDSA IDWeek", start:"2026-10-21", end:"2026-10-25", location:"Washington, DC", url:"https://www.idweek.org/", cfpOpen:"2026-02-18", cfpClose:"2026-04-30" },
+  { title:"ASHP Midyear", start:"2026-12-06", end:"2026-12-10", location:"Orlando, FL", url:"https://www.ashp.org/meetings-and-conferences/midyear-clinical-meeting-and-exhibition", cfpOpen:"2026-05-30", cfpClose:"2026-10-01" }
+];
+
+// ── 2. Calls for Papers (deadline as single-day event) ──────────
+const callsForPapers = [
+  { title:"CFP: Computational Modelling and Network Medicine in Drug Toxicology and Clinical Pharmacovigilance", journal:"Journal of Translational Medicine (IF 7.5)", impact:"7.5", date:"2026-01-21", url:"https://link.springer.com/collections/eabdigafhj" },
+  { title:"CFP: Drug discovery of ion channels", journal:"npj Drug Discovery", impact:"", date:"2026-04-30", url:"https://www.nature.com/npjdrugdiscov/collections" },
+  { title:"CFP: Drug discovery at G Protein-Coupled Receptors", journal:"npj Drug Discovery", impact:"", date:"2026-09-30", url:"https://www.nature.com/collections/gfaahhfcaj" },
+  { title:"CFP: Data to support drug discovery", journal:"Scientific Data (IF 4.0)", impact:"4.0", date:"2026-04-22", url:"https://www.nature.com/collections/efidabcffj" },
+  { title:"CFP: Credentials in Artificial Intelligence: International Perspectives on Transforming Teaching and Learning in Higher Education", journal:"International Journal of Educational Technology in Higher Education (IF 16.7)", impact:"16.7", date:"2026-03-01", url:"https://link.springer.com/collections/cgfhfcafai" },
+  { title:"CFP: Human Interaction with Gen AI Across Learning and Teaching Processes in Higher Education", journal:"International Journal of Educational Technology in Higher Education (IF 16.7)", impact:"16.7", date:"2026-05-31", url:"https://link.springer.com/collections/iddjabccja" },
+  { title:"CFP: Innovation, AI, and education", journal:"Humanities and Social Sciences Communications (IF 3.9)", impact:"3.9", date:"2026-07-09", url:"https://www.nature.com/collections/gffbgaahgb" },
+  { title:"CFP: Datasets in Education", journal:"Scientific Data (IF 4.0)", impact:"4.0", date:"2026-08-19", url:"https://www.nature.com/collections/gcgjjfihgg" },
+  { title:"CFP: Transforming Medical Education through Artificial Intelligence", journal:"npj Digital Medicine (IF 15.1)", impact:"15.1", date:"2026-04-24", url:"https://www.nature.com/collections/ehadbhgiji" },
+  { title:"CFP: Antimicrobials and Resistance in the Food Chain", journal:"npj Antimicrobials and Resistance (IF 8.7)", impact:"8.7", date:"2026-07-08", url:"https://www.nature.com/collections/bbeihchhgf" },
+  { title:"CFP: AI for Population Medicine and Public Health", journal:"npj Digital Medicine/npj Digital Public Health (IF 15.1)", impact:"15.1", date:"2026-05-15", url:"https://www.nature.com/collections/jaibcfdhef" },
+  { title:"CFP: The microbiome in precision medicine", journal:"npj Genomic Medicine (IF 4.8)", impact:"4.8", date:"2026-03-28", url:"https://www.nature.com/collections/iaadjjbbea" },
+  { title:"CFP: Diabetes and infectious disease", journal:"BMC Medicine (IF 9.4)", impact:"9.4", date:"2026-03-29", url:"https://link.springer.com/collections/feijedifdj" },
+  { title:"CFP: Viral hepatitis", journal:"Nature Communications (IF 15.7)", impact:"15.7", date:"2025-12-31", url:"https://www.nature.com/collections/abidffbfch" },
+  { title:"CFP: Infection and cancer", journal:"Nature Communications (IF 15.7)", impact:"15.7", date:"2026-03-31", url:"https://www.nature.com/collections/ihdbhcefif" },
+  { title:"CFP: Artificial intelligence and machine learning applications in microbiology", journal:"BMC Microbiology (IF 4.2)", impact:"4.2", date:"2026-01-09", url:"https://link.springer.com/collections/bbiccggggj" },
+  { title:"CFP: Economics of AI in Healthcare", journal:"npj Digital Medicine (IF 15.1)", impact:"15.1", date:"2026-01-10", url:"https://www.nature.com/collections/cbebcjddei" },
+  { title:"CFP: Health policy and systems research", journal:"Nature Communications (IF 15.7)", impact:"15.7", date:"2026-01-14", url:"https://www.nature.com/ncomms/calls-for-papers" },
+  { title:"CFP: Pathogen Drug Permeability", journal:"npj Antimicrobials and Resistance (IF 8.7)", impact:"8.7", date:"2026-04-15", url:"https://www.nature.com/npjamar/calls-for-papers" },
+  { title:"CFP: Natural bioactives, Gut microbiome, and human metabolism", journal:"npj Biofilms and Microbiomes (IF 9.3)", impact:"9.3", date:"2026-05-20", url:"https://www.nature.com/collections/ihecbjhhdd" },
+  { title:"CFP: Advances in microbial ecology", journal:"BMC Microbiology (IF 4.2)", impact:"4.2", date:"2026-05-20", url:"https://link.springer.com/collections/ddbhjfadca" },
+  { title:"CFP: Therapies for cystic fibrosis", journal:"Nature Communications (IF 15.7)", impact:"15.7", date:"2026-05-31", url:"https://www.nature.com/collections/jhbbbdafac" },
+  { title:"CFP: Artificial Intelligence Methodology in Structural Biology", journal:"Nature Communications/Nature Structural & Molecular Biology (IF 15.7)", impact:"15.7", date:"2026-05-31", url:"https://www.nature.com/collections/jbdjhghacg" },
+  { title:"CFP: Computational methodology for drug discovery", journal:"Nature Communications (IF 15.7)", impact:"15.7", date:"2026-02-28", url:"https://www.nature.com/collections/dhcgiaigac" },
+  { title:"CFP: Climate change and infectious diseases", journal:"Nature Microbiology/Nature Health (IF 19.4)", impact:"19.4", date:"2026-06-01", url:"https://www.nature.com/collections/bagaffbjja" },
+  { title:"CFP: Climate change and human health", journal:"BMC Medicine (IF 10.0)", impact:"10.0", date:"2026-03-02", url:"https://link.springer.com/collections/idgcedfhia" },
+  { title:"CFP: The clinical microbiome", journal:"Nature Microbiology/Nature Medicine (IF 19.4 / 87.3)", impact:"19.4 / 87.3", date:"2026-03-11", url:"https://www.nature.com/collections/cajbgagjib" },
+  { title:"CFP: Impact of agentic AI on care delivery", journal:"npj Digital Medicine (IF 15.1)", impact:"15.1", date:"2026-07-12", url:"https://www.nature.com/collections/ghaghgcbei" },
+  { title:"CFP: Cracking the code of AMR: resistance genomics", journal:"npj Antimicrobials and Resistance (IF 8.7)", impact:"8.7", date:"2026-06-24", url:"https://www.nature.com/collections/cfbjiegbcg" },
+  { title:"CFP: Exploring the New Frontier in Tropical Medicine with Computational Intelligence, AI, and IoT Integration for Healthcare", journal:"Tropical Medicine and Health (IF 3.5)", impact:"3.5", date:"2026-03-25", url:"https://link.springer.com/collections/hfjhadfjeh" },
+  { title:"CFP: Data on Science and Innovation Processes, Outputs and Outcomes", journal:"Scientific Data (IF 4.0)", impact:"4.0", date:"2026-03-26", url:"https://www.nature.com/collections/ijdfjejjeh" },
+  { title:"CFP: Artificial intelligence for next-generation anti-infective discovery", journal:"ACS Infectious Diseases (IF 3.8)", impact:"3.8", date:"2026-04-01", url:"https://axial.acs.org/medicinal-chemistry/call-for-papers-artificial-intelligence-for-next-generation-anti-infective-discovery" },
+  { title:"CFP: Data Science, AI and Machine Learning Approaches to AMR", journal:"npj Antimicrobials and Resistance (IF 8.7)", impact:"8.7", date:"2026-04-07", url:"https://www.nature.com/collections/eecajaidbe" },
+  { title:"CFP: Call For Papers: 100 Years of Quantum Mechanics—All About Molecules", journal:"Journal of Chemical Theory and Computation (JCTC) (IF 6.4)", impact:"6.4", date:"2026-04-30", url:"https://axial.acs.org/theoretical-and-computational-chemistry/call-for-papers-100-years-of-quantum-mechanics-all-about-molecules" },
+  { title:"CFP: Pharmaceutical Innovation and Global Health: Breakthroughs and Future", journal:"Journal of Medicinal Chemistry (IF 6.8)", impact:"6.8", date:"2026-04-30", url:"https://axial.acs.org/medicinal-chemistry/call-for-papers-pharmaceutical-innovation-and-global-health-breakthroughs-and-future" },
+  { title:"CFP: Medicinal Chemistry and Pharmacology of Antiviral Drugs", journal:"ACS Infectious Diseases/ACS Medicinal Chemistry Letters/ACS Pharmacology & Translational Science/Journal of Medicinal Chemistry (IF 3.8 / 4.0 / 3.7 / 6.8)", impact:"3.8 / 4.0 / 3.7 / 6.8", date:"2026-09-30", url:"https://axial.acs.org/medicinal-chemistry/call-for-papers-medicinal-chemistry-and-pharmacology-of-antiviral-drugs" },
+  { title:"CFP: Virtual Cell Models and AI in Drug Discovery", journal:"British Journal of Pharmacology (IF 7.7)", impact:"7.7", date:"2026-05-01", url:"https://bpspubs.onlinelibrary.wiley.com/hub/call-for-papers" },
+  { title:"CFP: Global Cancer Care: Obstacles, Solutions, and Impact on Survivorship", journal:"Nature Cancer/Communications Medicine/Communications Biology/Scientific Reports", impact:"", date:"2026-05-19", url:"https://www.nature.com/collections/haifcgbgah" },
+  { title:"CFP: Biology of drug resistance and tolerance in bacteria, viruses, fungi", journal:"Genome Biology (IF 9.4)", impact:"9.4", date:"2026-05-29", url:"https://link.springer.com/collections/bjhecaieha" },
+  { title:"CFP: Biofilms", journal:"Journal of Bacteriology (IF 3.2)", impact:"3.2", date:"2026-05-31", url:"https://journals.asm.org/asm-calls-for-papers" },
+  { title:"CFP: Mechanistic insights into human host and microbiome interactions", journal:"Nature Communications (IF 15.7)", impact:"15.7", date:"2026-05-31", url:"https://www.nature.com/collections/ihcfhcieic" },
+  { title:"CFP: Modeling the Impact of Protein Mutations on Chemical Reactions for Biochemistry, Protein Engineering, and Drug Discovery", journal:"Journal of Chemical Theory and Computation (JCTC) (IF 6.4)", impact:"6.4", date:"2026-06-01", url:"https://axial.acs.org/theoretical-and-computational-chemistry/call-for-papers-modeling-the-impact-of-protein-mutations-on-chemical-reactions-for-biochemistry-protein-engineering-and-drug-discovery" },
+  { title:"CFP: Evaluating the real-world clinical performance of AI", journal:"npj Digital Medicine (IF 15.1)", impact:"15.1", date:"2026-06-03", url:"https://www.nature.com/collections/hcdeibadid" },
+  { title:"CFP: Viruses and cancers", journal:"npj Viruses", impact:"", date:"2026-06-12", url:"https://www.nature.com/collections/bfaffbjija" },
+  { title:"CFP: Microbiome and Reproductive Health", journal:"Microbiome (IF 12.7)", impact:"12.7", date:"2026-06-16", url:"https://link.springer.com/collections/fbfahacdhi" },
+  { title:"CFP: Impact of AI on medical research", journal:"BMC Medical Research Methodology (IF 5.2)", impact:"5.2", date:"2026-06-18", url:"https://link.springer.com/collections/cdieieiacj" },
+  { title:"CFP: Artificial Intelligence in Genomic Medicine", journal:"npj Genomic Medicine (IF 4.8)", impact:"4.8", date:"2026-06-23", url:"https://www.nature.com/npjgenmed/calls-for-papers" },
+  { title:"CFP: What is new in the prevention, diagnosis, and treatment of hospital-acquired pneumonia?", journal:"Antimicrobial Resistance & Infection Control (IF 5.5)", impact:"5.5", date:"2026-06-25", url:"https://link.springer.com/collections/bgbhjabeba" },
+  { title:"CFP: Fungal infections", journal:"BMC Immunology (IF 3.1)", impact:"3.1", date:"2026-06-26", url:"https://link.springer.com/collections/ddhfibjigd" },
+  { title:"CFP: Infectious disease outbreak in conflict-driven displacement", journal:"Journal of Epidemiology and Global Health (IF 6.1)", impact:"6.1", date:"2026-06-26", url:"https://link.springer.com/collections/dijaajbcjh" },
+  { title:"CFP: Infectious disease management in infants and children", journal:"BMC Infectious Diseases (IF 3.1)", impact:"3.1", date:"2026-06-30", url:"https://link.springer.com/collections/jibcibadih" },
+  { title:"CFP: Artificial Intelligence and Computational Tools in Drug Development", journal:"AAPS Open", impact:"", date:"2026-06-30", url:"https://link.springer.com/collections/ifeeeaadce" },
+  { title:"CFP: Celebrating 80 years of the β-lactam Nobel Prize", journal:"ACS Infectious Diseases (IF 3.8)", impact:"3.8", date:"2026-06-30", url:"https://axial.acs.org/medicinal-chemistry/call-for-papers-celebrating-80-years-of-the-beta-lactam-nobel-prize" },
+  { title:"CFP: Nontuberculous Mycobacterial (NTM) Pathogens ─ Biology, Infection, and Drug Discovery", journal:"ACS Infectious Diseases (IF 3.8)", impact:"3.8", date:"2026-06-30", url:"https://axial.acs.org/medicinal-chemistry/call-for-papers-nontuberculous-mycobacterial-ntm-pathogens-biology-infection-and-drug-discovery" },
+  { title:"CFP: Call for Papers: Mass Spectrometry in Microbial Sciences", journal:"JASMS", impact:"", date:"2026-06-30", url:"https://axial.acs.org/analytical-chemistry/call-for-papers-mass-spectrometry-in-microbial-sciences" },
+  { title:"CFP: Appropriate use of antibiotics: public health strategies, knowledge, and practice gaps", journal:"BMC Public Health (IF 4.2)", impact:"4.2", date:"2026-07-03", url:"https://link.springer.com/collections/jbeiehebjj" },
+  { title:"CFP: The economics of social mobility", journal:"Humanities and Social Sciences Communications (IF 3.9)", impact:"3.9", date:"2026-07-07", url:"https://www.nature.com/collections/gcdcdcfbce" },
+  { title:"CFP: Artificial Intelligence in Omics and Translational Research", journal:"Human Genomics (IF 4.3)", impact:"4.3", date:"2026-07-15", url:"https://link.springer.com/collections/dfaifjhcej" },
+  { title:"CFP: Cardiometabolic and Hepatic Interconnections: From Mechanisms to Clinical Implications", journal:"Cardiovascular Diabetology (IF 10.6)", impact:"10.6", date:"2026-07-15", url:"https://link.springer.com/collections/dieeaahafg" },
+  { title:"CFP: Gut microbiome-virome dynamics and interactions", journal:"npj Biofilms and Microbiomes (IF 9.3)", impact:"9.3", date:"2026-07-15", url:"https://www.nature.com/npjbiofilms/calls-for-papers" },
+  { title:"CFP: Mycobacteria: advances in physiology and mycobacterial diseases research", journal:"BMC Microbiology (IF 4.2)", impact:"4.2", date:"2026-07-16", url:"https://link.springer.com/collections/bajaefecgf" },
+  { title:"CFP: Genomics of human pathogens", journal:"BMC Genomics (IF 4.2)", impact:"4.2", date:"2026-07-20", url:"https://link.springer.com/collections/iaeiigfdid" },
+  { title:"CFP: Urinary tract infections in older patients", journal:"BMC Infectious Diseases (IF 3.1)", impact:"3.1", date:"2026-07-20", url:"https://link.springer.com/collections/aiffadagdf" },
+  { title:"CFP: Hepatitis virus infections and treatment", journal:"BMC Infectious Diseases (IF 3.1)", impact:"3.1", date:"2026-07-20", url:"https://link.springer.com/collections/cidhfidfaf" },
+  { title:"CFP: Genomics of Infectious Diseases", journal:"BMC Infectious Diseases (IF 3.1)", impact:"3.1", date:"2026-07-20", url:"https://link.springer.com/collections/ffbaaggicb" },
+  { title:"CFP: Staphylococcal infections", journal:"BMC Infectious Diseases (IF 3.1)", impact:"3.1", date:"2026-07-20", url:"https://link.springer.com/collections/fjheihhice" },
+  { title:"CFP: Genomics of human pathogens", journal:"BMC Genomics (IF 4.2)", impact:"4.2", date:"2026-07-24", url:"https://link.springer.com/collections/iaeiigfdid" },
+  { title:"CFP: Metabolomics, Metabolism, and Nutrition: Experimental Studies, Data Resources, and Computational Methods", journal:"Genes & Nutrition (IF 4.6)", impact:"4.6", date:"2026-07-24", url:"https://link.springer.com/collections/bddbciigje" },
+  { title:"CFP: Diagnosis and care of sepsis", journal:"Nature Communications (IF 15.7)", impact:"15.7", date:"2026-07-27", url:"https://www.nature.com/collections/fecjcifefd" },
+  { title:"CFP: Urinary tract infections: antibiotic resistance and management", journal:"BMC Urology (IF 2.3)", impact:"2.3", date:"2026-07-28", url:"https://link.springer.com/collections/igedifhjah" },
+  { title:"CFP: Animal influenza virus epidemiology", journal:"npj Viruses", impact:"", date:"2026-07-29", url:"https://www.nature.com/collections/ghahcecaba" },
+  { title:"CFP: Water Testing: Antimicrobial Resistance in Water", journal:"npj Antimicrobials and Resistance (IF 8.7)", impact:"8.7", date:"2026-07-28", url:"https://www.nature.com/collections/bjgbhdgcbf" },
+  { title:"CFP: Methods development in Cryo-ET and in situ structural determination", journal:"Nature Methods/Nature Structural & Molecular Biology (IF 28.8 / 15.8)", impact:"28.8 / 15.8", date:"2026-07-28", url:"https://www.nature.com/ncomms/calls-for-papers" },
+  { title:"CFP: Causal inference and observational data vol. 2", journal:"BMC Medical Research Methodology (IF 5.2)", impact:"5.2", date:"2026-07-30", url:"https://link.springer.com/collections/hgihdahcfj" },
+  { title:"CFP: Host-Pathogen Interactions – Infection, Immunity and Beyond", journal:"Nature Immunology (IF 25.6)", impact:"25.6", date:"2026-07-30", url:"https://www.nature.com/collections/jgggbjghji" },
+  { title:"CFP: Physical Activity and Mental Health: From Mechanisms to Global Implementation", journal:"npj Exercise Medicine and Health", impact:"", date:"2026-07-30", url:"https://www.nature.com/collections/abiffchhca" },
+  { title:"CFP: Bacteremia: advances in diagnosis, treatment, and management", journal:"BMC Infectious Diseases (IF 3.1)", impact:"3.1", date:"2026-07-31", url:"https://www.biomedcentral.com/collections/col3461" },
+  { title:"CFP: Pharmacokinetic-driven strategies in personalized drug discovery", journal:"npj Drug Discovery", impact:"", date:"2026-07-31", url:"https://www.nature.com/collections/fddbafafhg" },
+  { title:"CFP: Reanalysis", journal:"Patterns (IF 8.1)", impact:"8.1", date:"2026-08-01", url:"https://www.cell.com/patterns/special-issues/call-for-papers" },
+  { title:"CFP: Infectious diseases of livestock", journal:"BMC Infectious Diseases (IF 3.1)", impact:"3.1", date:"2026-08-02", url:"https://link.springer.com/collections/ehacghjgic" },
+  { title:"CFP: Microbiome–drug interaction networks", journal:"BMC Personalized Medicine", impact:"", date:"2026-08-05", url:"https://link.springer.com/collections/idddeddhgf" },
+  { title:"CFP: AI for Malaria Elimination: Data-Driven Innovations in Surveillance and Control", journal:"Malaria Journal (IF 3.5)", impact:"3.5", date:"2026-08-11", url:"https://link.springer.com/collections/jiiggbechj" },
+  { title:"CFP: Predictive toxicology and chemical risk assessment", journal:"BMC Bioinformatics (IF 4.1)", impact:"4.1", date:"2026-08-14", url:"https://www.biomedcentral.com/collections/COL-3110" },
+  { title:"CFP: Cancer control in low- and middle-income countries – Part II", journal:"BMC Cancer (IF 4.7)", impact:"4.7", date:"2026-08-14", url:"https://link.springer.com/collections/bcefgdbfdf" },
+  { title:"CFP: Antimicrobial therapy in the intensive care unit", journal:"BMC Anesthesiology (IF 3.5)", impact:"3.5", date:"2026-08-19", url:"https://link.springer.com/collections/eibadehcci" },
+  { title:"CFP: Systematic reviews on infectious diseases - Part II", journal:"BMC Infectious Diseases (IF 3.1)", impact:"3.1", date:"2026-08-19", url:"https://link.springer.com/collections/egjifidhdf" },
+  { title:"CFP: Phages in the environment", journal:"npj Viruses", impact:"", date:"2026-08-21", url:"https://www.nature.com/collections/hcibigbcfe" },
+  { title:"CFP: Infectious disease modelling for health policy", journal:"Nature Communications/Communications Health/Communications Biology (IF 15.7)", impact:"15.7", date:"2026-08-28", url:"https://www.nature.com/collections/cafdeadabd/" },
+  { title:"CFP: Antimicrobial Resistance", journal:"BMC Microbiology (IF 4.2)", impact:"4.2", date:"2026-08-28", url:"https://link.springer.com/collections/bdjebgejee" },
+  { title:"CFP: Emerging Tools for Infection Diagnosis, Prognosis, and Spread Control", journal:"ACS Infectious Diseases (IF 3.8)", impact:"3.8", date:"2026-09-01", url:"https://axial.acs.org/medicinal-chemistry/call-for-papers-emerging-tools-for-infection-diagnosis-prognosis-and-spread-control" },
+  { title:"CFP: Computational Imaging for Healthcare", journal:"Patterns (IF 8.1)", impact:"8.1", date:"2026-09-01", url:"https://www.cell.com/patterns/special-issues/call-for-papers/medical-imaging" },
+  { title:"CFP: Evolutionary responses to contemporary global change", journal:"Nature Communications/Communications Biology/Communications Earth & Environment/Communications Medicine/Scientific Reports", impact:"", date:"2026-09-22", url:"https://www.nature.com/collections/dhhejgghij" },
+  { title:"CFP: Cell death and inflammatory signalling", journal:"Nature Immunology/Nature Cell Biology (IF 25.6 / 28.0)", impact:"25.6 / 28.0", date:"2026-10-28", url:"https://www.nature.com/collections/jaehbihgeg" },
+  { title:"CFP: One Health 2026", journal:"Communications Earth & Environment/Nature Communications (IF 15.7)", impact:"15.7", date:"2026-10-28", url:"https://www.nature.com/collections/hjcbhageee/" },
+  { title:"CFP: AI for clinical trial optimization", journal:"BMC Artificial Intelligence (IF 4.6)", impact:"4.6", date:"2026-12-01", url:"https://link.springer.com/collections/ahddfdfifi" },
+  { title:"CFP: Decision tools to manage and prevent antimicrobial resistance and healthcare-associated infections", journal:"BMC Medical Informatics and Decision Making (IF 3.5)", impact:"3.5", date:"2026-12-01", url:"https://link.springer.com/collections/jjejdiccch" },
+  { title:"CFP: The ethics of medical artificial intelligence: Trust and adoption of AI in healthcare", journal:"Philosophy & Technology (IF 5.1)", impact:"5.1", date:"2026-12-01", url:"https://link.springer.com/collections/abfhhheefd" },
+  { title:"CFP: The Gut-Brain Axis and Health", journal:"Nature Neuroscience (IF 25.0)", impact:"25.0", date:"2026-12-05", url:"https://www.nature.com/collections/bchejjbhae" },
+  { title:"CFP: Microbiome and Energy Metabolism", journal:"Nature Medicine/Nature Metabolism (IF 87.3)", impact:"87.3", date:"2026-12-06", url:"https://www.nature.com/collections/hidgieebfe/" },
+  { title:"CFP: AI Literacy and STEM Education", journal:"International Journal of STEM Education (IF 4.6)", impact:"4.6", date:"2027-01-31", url:"https://link.springer.com/collections/chdfcibfje" },
+  { title:"CFP: Obesity", journal:"Nature Medicine/Nature Metabolism (IF 87.3)", impact:"87.3", date:"2026-04-24", url:"https://www.nature.com/collections/aaadhbgfbg/" },
+  { title:"CFP: Signalling Pathways of Innate Immunity", journal:"Nature Cell Biology (IF 28.0)", impact:"28.0", date:"2026-05-31", url:"https://www.nature.com/collections/ihibjjdcee" },
+  { title:"CFP: Phages: from biology to the clinic", journal:"Nature Communications (IF 15.7)", impact:"15.7", date:"2026-06-30", url:"https://www.nature.com/collections/ddgicfcaee" },
+  { title:"CFP: Repetitive elements in health and disease", journal:"Nature Communications (IF 15.7)", impact:"15.7", date:"2026-06-09", url:"https://www.nature.com/collections/bfidjigcbc" },
+  { title:"CFP: Urban air quality", journal:"Nature Cities", impact:"", date:"2026-04-30", url:"https://www.nature.com/collections/bjbghhgfjh" },
+  { title:"CFP: Exercise and Physical Activity in Health and Disease", journal:"npj Exercise Medicine and Health", impact:"", date:"2026-09-03", url:"https://www.nature.com/collections/ggcficdbdg/" },
+  { title:"CFP: Antimicrobial Drugs and Antimicrobial Resistance in the Environment", journal:"npj Emerging Contaminants", impact:"", date:"2026-10-31", url:"https://www.nature.com/collections/cfjjbefghj" },
+  { title:"CFP: Mechanisms and impact of 3D genome organisation", journal:"Nature Genetics", impact:"", date:"2026-05-31", url:"https://www.nature.com/collections/bacjiafbeh" },
+  { title:"CFP: Digital Medicine for Infectious Diseases", journal:"Nature Medicine (IF 87.3)", impact:"87.3", date:"2026-11-09", url:"https://www.nature.com/collections/ddhbhbfgid" },
+  { title:"CFP: Systems immunology: multi-omics approaches, dynamical modeling and novel agentic AI approaches", journal:"npj Systems Biology and Applications", impact:"", date:"2026-09-12", url:"https://www.nature.com/collections/heaibjjajc" },
+  { title:"CFP: Crosstalk Between Tissue-Resident Adaptive and Innate Memory Cells", journal:"Nature Immunology (IF 25.6)", impact:"25.6", date:"2026-11-02", url:"https://www.nature.com/collections/ccbcciachj" },
+  { title:"CFP: The immune cells landscape in the gut-liver axis", journal:"npj Gut and Liver", impact:"", date:"2026-05-14", url:"https://www.nature.com/collections/jjjihaaiee" },
+  { title:"CFP: Environmental Triggers and Autoimmune Diseases", journal:"npj Autoimmunity", impact:"", date:"2026-08-17", url:"https://www.nature.com/collections/icjbgiabeh" },
+  { title:"CFP: Immuno-senescence", journal:"npj Aging", impact:"", date:"2026-04-29", url:"https://www.nature.com/collections/jgafgefgic" },
+  { title:"CFP: Pollutants and Toxicology: Gut Microbiota Dysbiosis as a Critical Biomarker", journal:"npj Toxicology", impact:"", date:"2026-11-25", url:"https://www.nature.com/collections/cejcagffbf" },
+  { title:"CFP: DNA repair and human disease", journal:"Nature Structural and Molecular Biology", impact:"", date:"2026-04-30", url:"https://www.nature.com/collections/ehffcdddfb/" },
+  { title:"CFP: Pharmaceutical intellectual property", journal:"Humanities and Social Sciences Communications (IF 3.9)", impact:"3.9", date:"2026-11-24", url:"https://www.nature.com/collections/bffjbiagge" },
+  { title:"CFP: Research futures: opportunities, challenges, and competitiveness of doctoral and early-career researchers", journal:"Humanities and Social Sciences Communications (IF 3.9)", impact:"3.9", date:"2026-08-05", url:"https://www.nature.com/collections/jjbecghcag" },
+  { title:"CFP: Transcriptomics data from clinical isolates", journal:"Scientific Data (IF 4.0)", impact:"4.0", date:"2026-07-08", url:"https://www.nature.com/collections/aagedjdhjf" },
+  { title:"CFP: Medicinal Chemistry Approaches for Small-Molecule Drug Discovery", journal:"npj Drug Discovery", impact:"", date:"2026-06-30", url:"https://www.nature.com/collections/icgbagijjd" },
+  { title:"CFP: AI in Chemistry", journal:"npj Artificial Intelligence", impact:"", date:"2026-07-10", url:"https://www.nature.com/collections/gcbedibjhc" },
+  { title:"CFP: AI-Driven Innovation in Atmospheric Chemistry and Composition–Climate Interactions", journal:"npj Climate and Atmospheric Science", impact:"", date:"2026-10-31", url:"https://www.nature.com/collections/ggejajfbei" },
+  { title:"CFP: In pursuit of novel drug targets for cardiovascular disease", journal:"npj Cardiovascular Health", impact:"", date:"2026-03-25", url:"https://www.nature.com/collections/ciacchcidh" },
+  { title:"CFP: Bacteria, archaea and virus genomics", journal:"Scientific Data (IF 4.0)", impact:"4.0", date:"2026-12-12", url:"https://www.nature.com/collections/ejchgjiajh" },
+  { title:"CFP: Nutritional strategies to optimise the health outcomes of physical activity and exercise interventions", journal:"npj Exercise Medicine and Health", impact:"", date:"2026-11-25", url:"https://www.nature.com/collections/gjhabgbcha" },
+  { title:"CFP: Single-cell omics: from technology to biology (Reviews)", journal:"Experimental & Molecular Medicine", impact:"", date:"2026-12-02", url:"https://www.nature.com/collections/gffeedjjjb" },
+  { title:"CFP: Virome", journal:"npj Viruses", impact:"", date:"2026-07-31", url:"https://www.nature.com/collections/ggifegcdbj" },
+  { title:"CFP: Phages as antimicrobial therapy", journal:"npj Viruses", impact:"", date:"2026-08-21", url:"https://www.nature.com/collections/achdiaidjj" },
+  { title:"CFP: Antiviral Therapy", journal:"npj Viruses", impact:"", date:"2026-03-20", url:"https://www.nature.com/collections/jihcibajea" },
+  { title:"CFP: Emerging Fungal Pathogens", journal:"npj Fungal Science", impact:"", date:"2026-09-22", url:"https://www.nature.com/collections/hdiadchghc" },
+  { title:"CFP: Tropical cyclones impacts and preparedness", journal:"Nature Water", impact:"", date:"2026-06-30", url:"https://www.nature.com/collections/beigiaacce" },
+  { title:"CFP: Basic Psychological Needs and Well-Being", journal:"Nature Human Behaviour", impact:"", date:"2026-11-27", url:"https://www.nature.com/collections/diihddgjcg" },
+  { title:"CFP: Economics of Antimicrobial Resistance: Costs, Consequences, and Policy Responses", journal:"Value in Health Regional Issues", impact:"", date:"2026-04-30", url:"https://www.ispor.org/publications/journals/value-in-health-regional-issues/for-authors/call-for-papers" }
+];
+
+// ── 3. NIH Grant Deadlines (from mcphersonlab.github.io/research) ──
+const nihGrantDeadlines = [
+  { title:"🏛️ NIH R01/U01 New", date:"2026-02-05", detail:"R01/U01 new applications", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R01/U01 New", date:"2026-06-05", detail:"R01/U01 new applications", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R01/U01 New", date:"2026-10-05", detail:"R01/U01 new applications", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R01/U01 New", date:"2027-02-05", detail:"R01/U01 new applications", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R01/U01 New", date:"2027-06-05", detail:"R01/U01 new applications", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R01/U01 New", date:"2027-10-05", detail:"R01/U01 new applications", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R01/U01 New", date:"2028-02-05", detail:"R01/U01 new applications", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R01/U01 New", date:"2028-06-05", detail:"R01/U01 new applications", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R01/U01 New", date:"2028-10-05", detail:"R01/U01 new applications", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R01/U01 Renewal/Resubmission/Revision", date:"2026-03-05", detail:"R01/U01 renewal/resubmission/revision", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R01/U01 Renewal/Resubmission/Revision", date:"2026-07-05", detail:"R01/U01 renewal/resubmission/revision", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R01/U01 Renewal/Resubmission/Revision", date:"2026-11-05", detail:"R01/U01 renewal/resubmission/revision", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R01/U01 Renewal/Resubmission/Revision", date:"2027-03-05", detail:"R01/U01 renewal/resubmission/revision", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R01/U01 Renewal/Resubmission/Revision", date:"2027-07-05", detail:"R01/U01 renewal/resubmission/revision", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R01/U01 Renewal/Resubmission/Revision", date:"2027-11-05", detail:"R01/U01 renewal/resubmission/revision", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R01/U01 Renewal/Resubmission/Revision", date:"2028-03-05", detail:"R01/U01 renewal/resubmission/revision", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R01/U01 Renewal/Resubmission/Revision", date:"2028-07-05", detail:"R01/U01 renewal/resubmission/revision", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R01/U01 Renewal/Resubmission/Revision", date:"2028-11-05", detail:"R01/U01 renewal/resubmission/revision", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH K Series New", date:"2026-02-12", detail:"Career development awards", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH K Series New", date:"2026-06-12", detail:"Career development awards", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH K Series New", date:"2026-10-12", detail:"Career development awards", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH K Series New", date:"2027-02-12", detail:"Career development awards", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH K Series New", date:"2027-06-12", detail:"Career development awards", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH K Series New", date:"2027-10-12", detail:"Career development awards", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH K Series New", date:"2028-02-12", detail:"Career development awards", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH K Series New", date:"2028-06-12", detail:"Career development awards", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH K Series New", date:"2028-10-12", detail:"Career development awards", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH K Series Renewal/Resubmission/Revision", date:"2026-03-12", detail:"Career development renewals", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH K Series Renewal/Resubmission/Revision", date:"2026-07-12", detail:"Career development renewals", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH K Series Renewal/Resubmission/Revision", date:"2026-11-12", detail:"Career development renewals", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH K Series Renewal/Resubmission/Revision", date:"2027-03-12", detail:"Career development renewals", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH K Series Renewal/Resubmission/Revision", date:"2027-07-12", detail:"Career development renewals", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH K Series Renewal/Resubmission/Revision", date:"2027-11-12", detail:"Career development renewals", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH K Series Renewal/Resubmission/Revision", date:"2028-03-12", detail:"Career development renewals", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH K Series Renewal/Resubmission/Revision", date:"2028-07-12", detail:"Career development renewals", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH K Series Renewal/Resubmission/Revision", date:"2028-11-12", detail:"Career development renewals", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R03/R21/R33/R34 Family New", date:"2026-02-16", detail:"Small grant family", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R03/R21/R33/R34 Family New", date:"2026-06-16", detail:"Small grant family", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R03/R21/R33/R34 Family New", date:"2026-10-16", detail:"Small grant family", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R03/R21/R33/R34 Family New", date:"2027-02-16", detail:"Small grant family", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R03/R21/R33/R34 Family New", date:"2027-06-16", detail:"Small grant family", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R03/R21/R33/R34 Family New", date:"2027-10-16", detail:"Small grant family", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R03/R21/R33/R34 Family New", date:"2028-02-16", detail:"Small grant family", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R03/R21/R33/R34 Family New", date:"2028-06-16", detail:"Small grant family", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R03/R21/R33/R34 Family New", date:"2028-10-16", detail:"Small grant family", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R03/R21/R33/R34 Family Renewal/Resubmission/Revision", date:"2026-03-16", detail:"Small grant family renewals", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R03/R21/R33/R34 Family Renewal/Resubmission/Revision", date:"2026-07-16", detail:"Small grant family renewals", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R03/R21/R33/R34 Family Renewal/Resubmission/Revision", date:"2026-11-16", detail:"Small grant family renewals", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R03/R21/R33/R34 Family Renewal/Resubmission/Revision", date:"2027-03-16", detail:"Small grant family renewals", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R03/R21/R33/R34 Family Renewal/Resubmission/Revision", date:"2027-07-16", detail:"Small grant family renewals", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R03/R21/R33/R34 Family Renewal/Resubmission/Revision", date:"2027-11-16", detail:"Small grant family renewals", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R03/R21/R33/R34 Family Renewal/Resubmission/Revision", date:"2028-03-16", detail:"Small grant family renewals", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R03/R21/R33/R34 Family Renewal/Resubmission/Revision", date:"2028-07-16", detail:"Small grant family renewals", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R03/R21/R33/R34 Family Renewal/Resubmission/Revision", date:"2028-11-16", detail:"Small grant family renewals", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R15 AREA", date:"2026-02-25", detail:"AREA grants", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R15 AREA", date:"2026-06-25", detail:"AREA grants", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R15 AREA", date:"2026-10-25", detail:"AREA grants", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R15 AREA", date:"2027-02-25", detail:"AREA grants", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R15 AREA", date:"2027-06-25", detail:"AREA grants", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R15 AREA", date:"2027-10-25", detail:"AREA grants", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R15 AREA", date:"2028-02-25", detail:"AREA grants", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R15 AREA", date:"2028-06-25", detail:"AREA grants", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R15 AREA", date:"2028-10-25", detail:"AREA grants", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH F Series", date:"2026-04-08", detail:"Fellowships", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH F Series", date:"2026-08-08", detail:"Fellowships", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH F Series", date:"2026-12-08", detail:"Fellowships", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH F Series", date:"2027-04-08", detail:"Fellowships", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH F Series", date:"2027-08-08", detail:"Fellowships", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH F Series", date:"2027-12-08", detail:"Fellowships", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH F Series", date:"2028-04-08", detail:"Fellowships", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH F Series", date:"2028-08-08", detail:"Fellowships", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH F Series", date:"2028-12-08", detail:"Fellowships", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R13/U13 Conference Grants", date:"2026-04-12", detail:"Conference grants", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R13/U13 Conference Grants", date:"2026-08-12", detail:"Conference grants", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R13/U13 Conference Grants", date:"2026-12-12", detail:"Conference grants", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R13/U13 Conference Grants", date:"2027-04-12", detail:"Conference grants", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R13/U13 Conference Grants", date:"2027-08-12", detail:"Conference grants", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R13/U13 Conference Grants", date:"2027-12-12", detail:"Conference grants", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R13/U13 Conference Grants", date:"2028-04-12", detail:"Conference grants", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R13/U13 Conference Grants", date:"2028-08-12", detail:"Conference grants", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" },
+  { title:"🏛️ NIH R13/U13 Conference Grants", date:"2028-12-12", detail:"Conference grants", note:"Standard NIH due date", url:"https://grants.nih.gov/grants-process/submit/submission-policies/standard-due-dates" }
+];
+
+// ── 4. Trainee Deadlines ───────────────────────────────────────
+const traineeDeadlinePrograms = [
+  { title:"MDACC CATALYST Program(s)", opensOn:"11-17", closesOn:"01-14" },
+  { title:"McGovern - GradSURP", opensOn:"12-01", closesOn:"01-15" },
+  { title:"McGovern - MicroSURP", opensOn:"12-01", closesOn:"02-01" },
+  { title:"BCM SMART", opensOn:"10-01", closesOn:"01-30" },
+  { title:"UH-CURE/UH-HEART", opensOn:"12-01", closesOn:"02-23" }
+];
+
+function monthDayToParts(monthDay) {
+  const [month, day] = monthDay.split("-").map(Number);
+  return { month, day };
+}
+
+function generateTraineeDeadlineEvents(startYear, endYear) {
+  const events = [];
+  for (let year = startYear; year <= endYear; year++) {
+    traineeDeadlinePrograms.forEach(program => {
+      const opensOn = monthDayToParts(program.opensOn);
+      const closesOn = monthDayToParts(program.closesOn);
+      const crossesYearBoundary = (
+        closesOn.month < opensOn.month ||
+        (closesOn.month === opensOn.month && closesOn.day < opensOn.day)
+      );
+      const opens = `${year}-${program.opensOn}`;
+      const closes = `${crossesYearBoundary ? year + 1 : year}-${program.closesOn}`;
+      events.push({
+        title: `🎓 ${program.title} Opens`,
+        start: opens,
+        allDay: true,
+        phase: "Open",
+        detail: "Annual trainee program application opens",
+        category: "trainee"
+      });
+      events.push({
+        title: `🎓 ${program.title} Closes`,
+        start: closes,
+        allDay: true,
+        phase: "Close",
+        detail: "Annual trainee program application closes",
+        category: "trainee"
+      });
+    });
+  }
+  return events;
+}
+const traineeDeadlineEvents = generateTraineeDeadlineEvents(2025, 2030);
+
+// ── 5. Calls for Papers without linked projects ────────────────
+const unlinkedCallsForPapers = [
+  { title:"CFP: Computational Modelling and Network Medicine in Drug Toxicology and Clinical Pharmacovigilance", journal:"Journal of Translational Medicine (IF 7.5)", impact:"7.5", date:"2026-01-21", url:"https://link.springer.com/collections/eabdigafhj" },
+  { title:"CFP: Drug discovery of ion channels", journal:"npj Drug Discovery", impact:"", date:"2026-04-30", url:"https://www.nature.com/npjdrugdiscov/collections" },
+  { title:"CFP: Drug discovery at G Protein-Coupled Receptors", journal:"npj Drug Discovery", impact:"", date:"2026-09-30", url:"https://www.nature.com/collections/gfaahhfcaj" },
+  { title:"CFP: Data to support drug discovery", journal:"Scientific Data (IF 4.0)", impact:"4.0", date:"2026-04-22", url:"https://www.nature.com/collections/efidabcffj" },
+  { title:"CFP: Credentials in Artificial Intelligence: International Perspectives on Transforming Teaching and Learning in Higher Education", journal:"International Journal of Educational Technology in Higher Education (IF 16.7)", impact:"16.7", date:"2026-03-01", url:"https://link.springer.com/collections/cgfhfcafai" },
+  { title:"CFP: Human Interaction with Gen AI Across Learning and Teaching Processes in Higher Education", journal:"International Journal of Educational Technology in Higher Education (IF 16.7)", impact:"16.7", date:"2026-05-31", url:"https://link.springer.com/collections/iddjabccja" },
+  { title:"CFP: Innovation, AI, and education", journal:"Humanities and Social Sciences Communications (IF 3.9)", impact:"3.9", date:"2026-07-09", url:"https://www.nature.com/collections/gffbgaahgb" },
+  { title:"CFP: Datasets in Education", journal:"Scientific Data (IF 4.0)", impact:"4.0", date:"2026-08-19", url:"https://www.nature.com/collections/gcgjjfihgg" },
+  { title:"CFP: Transforming Medical Education through Artificial Intelligence", journal:"npj Digital Medicine (IF 15.1)", impact:"15.1", date:"2026-04-24", url:"https://www.nature.com/collections/ehadbhgiji" },
+  { title:"CFP: Diabetes and infectious disease", journal:"BMC Medicine (IF 9.4)", impact:"9.4", date:"2026-03-29", url:"https://link.springer.com/collections/feijedifdj" },
+  { title:"CFP: Viral hepatitis", journal:"Nature Communications (IF 15.7)", impact:"15.7", date:"2025-12-31", url:"https://www.nature.com/collections/abidffbfch" },
+  { title:"CFP: Infection and cancer", journal:"Nature Communications (IF 15.7)", impact:"15.7", date:"2026-03-31", url:"https://www.nature.com/collections/ihdbhcefif" },
+  { title:"CFP: Artificial intelligence and machine learning applications in microbiology", journal:"BMC Microbiology (IF 4.2)", impact:"4.2", date:"2026-01-09", url:"https://link.springer.com/collections/bbiccggggj" },
+  { title:"CFP: Economics of AI in Healthcare", journal:"npj Digital Medicine (IF 15.1)", impact:"15.1", date:"2026-01-10", url:"https://www.nature.com/collections/cbebcjddei" },
+  { title:"CFP: Health policy and systems research", journal:"Nature Communications (IF 15.7)", impact:"15.7", date:"2026-01-14", url:"https://www.nature.com/ncomms/calls-for-papers" },
+  { title:"CFP: Pathogen Drug Permeability", journal:"npj Antimicrobials and Resistance (IF 8.7)", impact:"8.7", date:"2026-04-15", url:"https://www.nature.com/npjamar/calls-for-papers" },
+  { title:"CFP: Computational methodology for drug discovery", journal:"Nature Communications (IF 15.7)", impact:"15.7", date:"2026-02-28", url:"https://www.nature.com/collections/dhcgiaigac" },
+  { title:"CFP: Climate change and human health", journal:"BMC Medicine (IF 10.0)", impact:"10.0", date:"2026-03-02", url:"https://link.springer.com/collections/idgcedfhia" },
+  { title:"CFP: The clinical microbiome", journal:"Nature Microbiology/Nature Medicine (IF 19.4 / 87.3)", impact:"19.4 / 87.3", date:"2026-03-11", url:"https://www.nature.com/collections/cajbgagjib" },
+  { title:"CFP: Impact of agentic AI on care delivery", journal:"npj Digital Medicine (IF 15.1)", impact:"15.1", date:"2026-07-12", url:"https://www.nature.com/collections/ghaghgcbei" },
+  { title:"CFP: Exploring the New Frontier in Tropical Medicine with Computational Intelligence, AI, and IoT Integration for Healthcare", journal:"Tropical Medicine and Health (IF 3.5)", impact:"3.5", date:"2026-03-25", url:"https://link.springer.com/collections/hfjhadfjeh" },
+  { title:"CFP: Data on Science and Innovation Processes, Outputs and Outcomes", journal:"Scientific Data (IF 4.0)", impact:"4.0", date:"2026-03-26", url:"https://www.nature.com/collections/ijdfjejjeh" },
+  { title:"CFP: Call For Papers: 100 Years of Quantum Mechanics—All About Molecules", journal:"Journal of Chemical Theory and Computation (JCTC) (IF 6.4)", impact:"6.4", date:"2026-04-30", url:"https://axial.acs.org/theoretical-and-computational-chemistry/call-for-papers-100-years-of-quantum-mechanics-all-about-molecules" },
+  { title:"CFP: Pharmaceutical Innovation and Global Health: Breakthroughs and Future", journal:"Journal of Medicinal Chemistry (IF 6.8)", impact:"6.8", date:"2026-04-30", url:"https://axial.acs.org/medicinal-chemistry/call-for-papers-pharmaceutical-innovation-and-global-health-breakthroughs-and-future" },
+  { title:"CFP: Medicinal Chemistry and Pharmacology of Antiviral Drugs", journal:"ACS Infectious Diseases/ACS Medicinal Chemistry Letters/ACS Pharmacology & Translational Science/Journal of Medicinal Chemistry (IF 3.8 / 4.0 / 3.7 / 6.8)", impact:"3.8 / 4.0 / 3.7 / 6.8", date:"2026-09-30", url:"https://axial.acs.org/medicinal-chemistry/call-for-papers-medicinal-chemistry-and-pharmacology-of-antiviral-drugs" },
+  { title:"CFP: Global Cancer Care: Obstacles, Solutions, and Impact on Survivorship", journal:"Nature Cancer/Communications Medicine/Communications Biology/Scientific Reports", impact:"", date:"2026-05-19", url:"https://www.nature.com/collections/haifcgbgah" },
+  { title:"CFP: Biology of drug resistance and tolerance in bacteria, viruses, fungi", journal:"Genome Biology (IF 9.4)", impact:"9.4", date:"2026-05-29", url:"https://link.springer.com/collections/bjhecaieha" },
+  { title:"CFP: Modeling the Impact of Protein Mutations on Chemical Reactions for Biochemistry, Protein Engineering, and Drug Discovery", journal:"Journal of Chemical Theory and Computation (JCTC) (IF 6.4)", impact:"6.4", date:"2026-06-01", url:"https://axial.acs.org/theoretical-and-computational-chemistry/call-for-papers-modeling-the-impact-of-protein-mutations-on-chemical-reactions-for-biochemistry-protein-engineering-and-drug-discovery" },
+  { title:"CFP: Viruses and cancers", journal:"npj Viruses", impact:"", date:"2026-06-12", url:"https://www.nature.com/collections/bfaffbjija" },
+  { title:"CFP: Impact of AI on medical research", journal:"BMC Medical Research Methodology (IF 5.2)", impact:"5.2", date:"2026-06-18", url:"https://link.springer.com/collections/cdieieiacj" },
+  { title:"CFP: Artificial Intelligence in Genomic Medicine", journal:"npj Genomic Medicine (IF 4.8)", impact:"4.8", date:"2026-06-23", url:"https://www.nature.com/npjgenmed/calls-for-papers" },
+  { title:"CFP: Infectious disease outbreak in conflict-driven displacement", journal:"Journal of Epidemiology and Global Health (IF 6.1)", impact:"6.1", date:"2026-06-26", url:"https://link.springer.com/collections/dijaajbcjh" },
+  { title:"CFP: Infectious disease management in infants and children", journal:"BMC Infectious Diseases (IF 3.1)", impact:"3.1", date:"2026-06-30", url:"https://link.springer.com/collections/jibcibadih" },
+  { title:"CFP: Artificial Intelligence and Computational Tools in Drug Development", journal:"AAPS Open", impact:"", date:"2026-06-30", url:"https://link.springer.com/collections/ifeeeaadce" },
+  { title:"CFP: Celebrating 80 years of the β-lactam Nobel Prize", journal:"ACS Infectious Diseases (IF 3.8)", impact:"3.8", date:"2026-06-30", url:"https://axial.acs.org/medicinal-chemistry/call-for-papers-celebrating-80-years-of-the-beta-lactam-nobel-prize" },
+  { title:"CFP: Nontuberculous Mycobacterial (NTM) Pathogens ─ Biology, Infection, and Drug Discovery", journal:"ACS Infectious Diseases (IF 3.8)", impact:"3.8", date:"2026-06-30", url:"https://axial.acs.org/medicinal-chemistry/call-for-papers-nontuberculous-mycobacterial-ntm-pathogens-biology-infection-and-drug-discovery" },
+  { title:"CFP: Call for Papers: Mass Spectrometry in Microbial Sciences", journal:"JASMS", impact:"", date:"2026-06-30", url:"https://axial.acs.org/analytical-chemistry/call-for-papers-mass-spectrometry-in-microbial-sciences" },
+  { title:"CFP: Appropriate use of antibiotics: public health strategies, knowledge, and practice gaps", journal:"BMC Public Health (IF 4.2)", impact:"4.2", date:"2026-07-03", url:"https://link.springer.com/collections/jbeiehebjj" },
+  { title:"CFP: The economics of social mobility", journal:"Humanities and Social Sciences Communications (IF 3.9)", impact:"3.9", date:"2026-07-07", url:"https://www.nature.com/collections/gcdcdcfbce" },
+  { title:"CFP: Artificial Intelligence in Omics and Translational Research", journal:"Human Genomics (IF 4.3)", impact:"4.3", date:"2026-07-15", url:"https://link.springer.com/collections/dfaifjhcej" },
+  { title:"CFP: Cardiometabolic and Hepatic Interconnections: From Mechanisms to Clinical Implications", journal:"Cardiovascular Diabetology (IF 10.6)", impact:"10.6", date:"2026-07-15", url:"https://link.springer.com/collections/dieeaahafg" },
+  { title:"CFP: Genomics of human pathogens", journal:"BMC Genomics (IF 4.2)", impact:"4.2", date:"2026-07-20", url:"https://link.springer.com/collections/iaeiigfdid" },
+  { title:"CFP: Hepatitis virus infections and treatment", journal:"BMC Infectious Diseases (IF 3.1)", impact:"3.1", date:"2026-07-20", url:"https://link.springer.com/collections/cidhfidfaf" },
+  { title:"CFP: Genomics of human pathogens", journal:"BMC Genomics (IF 4.2)", impact:"4.2", date:"2026-07-24", url:"https://link.springer.com/collections/iaeiigfdid" },
+  { title:"CFP: Metabolomics, Metabolism, and Nutrition: Experimental Studies, Data Resources, and Computational Methods", journal:"Genes & Nutrition (IF 4.6)", impact:"4.6", date:"2026-07-24", url:"https://link.springer.com/collections/bddbciigje" },
+  { title:"CFP: Diagnosis and care of sepsis", journal:"Nature Communications (IF 15.7)", impact:"15.7", date:"2026-07-27", url:"https://www.nature.com/collections/fecjcifefd" },
+  { title:"CFP: Urinary tract infections: antibiotic resistance and management", journal:"BMC Urology (IF 2.3)", impact:"2.3", date:"2026-07-28", url:"https://link.springer.com/collections/igedifhjah" },
+  { title:"CFP: Animal influenza virus epidemiology", journal:"npj Viruses", impact:"", date:"2026-07-29", url:"https://www.nature.com/collections/ghahcecaba" },
+  { title:"CFP: Methods development in Cryo-ET and in situ structural determination", journal:"Nature Methods/Nature Structural & Molecular Biology (IF 28.8 / 15.8)", impact:"28.8 / 15.8", date:"2026-07-28", url:"https://www.nature.com/ncomms/calls-for-papers" },
+  { title:"CFP: Host-Pathogen Interactions – Infection, Immunity and Beyond", journal:"Nature Immunology (IF 25.6)", impact:"25.6", date:"2026-07-30", url:"https://www.nature.com/collections/jgggbjghji" },
+  { title:"CFP: Physical Activity and Mental Health: From Mechanisms to Global Implementation", journal:"npj Exercise Medicine and Health", impact:"", date:"2026-07-30", url:"https://www.nature.com/collections/abiffchhca" },
+  { title:"CFP: Bacteremia: advances in diagnosis, treatment, and management", journal:"BMC Infectious Diseases (IF 3.1)", impact:"3.1", date:"2026-07-31", url:"https://www.biomedcentral.com/collections/col3461" },
+  { title:"CFP: Pharmacokinetic-driven strategies in personalized drug discovery", journal:"npj Drug Discovery", impact:"", date:"2026-07-31", url:"https://www.nature.com/collections/fddbafafhg" },
+  { title:"CFP: Reanalysis", journal:"Patterns (IF 8.1)", impact:"8.1", date:"2026-08-01", url:"https://www.cell.com/patterns/special-issues/call-for-papers" },
+  { title:"CFP: Infectious diseases of livestock", journal:"BMC Infectious Diseases (IF 3.1)", impact:"3.1", date:"2026-08-02", url:"https://link.springer.com/collections/ehacghjgic" },
+  { title:"CFP: AI for Malaria Elimination: Data-Driven Innovations in Surveillance and Control", journal:"Malaria Journal (IF 3.5)", impact:"3.5", date:"2026-08-11", url:"https://link.springer.com/collections/jiiggbechj" },
+  { title:"CFP: Predictive toxicology and chemical risk assessment", journal:"BMC Bioinformatics (IF 4.1)", impact:"4.1", date:"2026-08-14", url:"https://www.biomedcentral.com/collections/COL-3110" },
+  { title:"CFP: Cancer control in low- and middle-income countries – Part II", journal:"BMC Cancer (IF 4.7)", impact:"4.7", date:"2026-08-14", url:"https://link.springer.com/collections/bcefgdbfdf" },
+  { title:"CFP: Antimicrobial therapy in the intensive care unit", journal:"BMC Anesthesiology (IF 3.5)", impact:"3.5", date:"2026-08-19", url:"https://link.springer.com/collections/eibadehcci" },
+  { title:"CFP: Systematic reviews on infectious diseases - Part II", journal:"BMC Infectious Diseases (IF 3.1)", impact:"3.1", date:"2026-08-19", url:"https://link.springer.com/collections/egjifidhdf" },
+  { title:"CFP: Phages in the environment", journal:"npj Viruses", impact:"", date:"2026-08-21", url:"https://www.nature.com/collections/hcibigbcfe" },
+  { title:"CFP: Infectious disease modelling for health policy", journal:"Nature Communications/Communications Health/Communications Biology (IF 15.7)", impact:"15.7", date:"2026-08-28", url:"https://www.nature.com/collections/cafdeadabd/" },
+  { title:"CFP: Antimicrobial Resistance", journal:"BMC Microbiology (IF 4.2)", impact:"4.2", date:"2026-08-28", url:"https://link.springer.com/collections/bdjebgejee" },
+  { title:"CFP: Emerging Tools for Infection Diagnosis, Prognosis, and Spread Control", journal:"ACS Infectious Diseases (IF 3.8)", impact:"3.8", date:"2026-09-01", url:"https://axial.acs.org/medicinal-chemistry/call-for-papers-emerging-tools-for-infection-diagnosis-prognosis-and-spread-control" },
+  { title:"CFP: Computational Imaging for Healthcare", journal:"Patterns (IF 8.1)", impact:"8.1", date:"2026-09-01", url:"https://www.cell.com/patterns/special-issues/call-for-papers/medical-imaging" },
+  { title:"CFP: Evolutionary responses to contemporary global change", journal:"Nature Communications/Communications Biology/Communications Earth & Environment/Communications Medicine/Scientific Reports", impact:"", date:"2026-09-22", url:"https://www.nature.com/collections/dhhejgghij" },
+  { title:"CFP: Cell death and inflammatory signalling", journal:"Nature Immunology/Nature Cell Biology (IF 25.6 / 28.0)", impact:"25.6 / 28.0", date:"2026-10-28", url:"https://www.nature.com/collections/jaehbihgeg" },
+  { title:"CFP: One Health 2026", journal:"Communications Earth & Environment/Nature Communications (IF 15.7)", impact:"15.7", date:"2026-10-28", url:"https://www.nature.com/collections/hjcbhageee/" },
+  { title:"CFP: AI for clinical trial optimization", journal:"BMC Artificial Intelligence (IF 4.6)", impact:"4.6", date:"2026-12-01", url:"https://link.springer.com/collections/ahddfdfifi" },
+  { title:"CFP: Decision tools to manage and prevent antimicrobial resistance and healthcare-associated infections", journal:"BMC Medical Informatics and Decision Making (IF 3.5)", impact:"3.5", date:"2026-12-01", url:"https://link.springer.com/collections/jjejdiccch" },
+  { title:"CFP: The ethics of medical artificial intelligence: Trust and adoption of AI in healthcare", journal:"Philosophy & Technology (IF 5.1)", impact:"5.1", date:"2026-12-01", url:"https://link.springer.com/collections/abfhhheefd" },
+  { title:"CFP: The Gut-Brain Axis and Health", journal:"Nature Neuroscience (IF 25.0)", impact:"25.0", date:"2026-12-05", url:"https://www.nature.com/collections/bchejjbhae" },
+  { title:"CFP: Microbiome and Energy Metabolism", journal:"Nature Medicine/Nature Metabolism (IF 87.3)", impact:"87.3", date:"2026-12-06", url:"https://www.nature.com/collections/hidgieebfe/" },
+  { title:"CFP: AI Literacy and STEM Education", journal:"International Journal of STEM Education (IF 4.6)", impact:"4.6", date:"2027-01-31", url:"https://link.springer.com/collections/chdfcibfje" },
+  { title:"CFP: Obesity", journal:"Nature Medicine/Nature Metabolism (IF 87.3)", impact:"87.3", date:"2026-04-24", url:"https://www.nature.com/collections/aaadhbgfbg/" },
+  { title:"CFP: Signalling Pathways of Innate Immunity", journal:"Nature Cell Biology (IF 28.0)", impact:"28.0", date:"2026-05-31", url:"https://www.nature.com/collections/ihibjjdcee" },
+  { title:"CFP: Phages: from biology to the clinic", journal:"Nature Communications (IF 15.7)", impact:"15.7", date:"2026-06-30", url:"https://www.nature.com/collections/ddgicfcaee" },
+  { title:"CFP: Repetitive elements in health and disease", journal:"Nature Communications (IF 15.7)", impact:"15.7", date:"2026-06-09", url:"https://www.nature.com/collections/bfidjigcbc" },
+  { title:"CFP: Urban air quality", journal:"Nature Cities", impact:"", date:"2026-04-30", url:"https://www.nature.com/collections/bjbghhgfjh" },
+  { title:"CFP: Exercise and Physical Activity in Health and Disease", journal:"npj Exercise Medicine and Health", impact:"", date:"2026-09-03", url:"https://www.nature.com/collections/ggcficdbdg/" },
+  { title:"CFP: Antimicrobial Drugs and Antimicrobial Resistance in the Environment", journal:"npj Emerging Contaminants", impact:"", date:"2026-10-31", url:"https://www.nature.com/collections/cfjjbefghj" },
+  { title:"CFP: Mechanisms and impact of 3D genome organisation", journal:"Nature Genetics", impact:"", date:"2026-05-31", url:"https://www.nature.com/collections/bacjiafbeh" },
+  { title:"CFP: Digital Medicine for Infectious Diseases", journal:"Nature Medicine (IF 87.3)", impact:"87.3", date:"2026-11-09", url:"https://www.nature.com/collections/ddhbhbfgid" },
+  { title:"CFP: Systems immunology: multi-omics approaches, dynamical modeling and novel agentic AI approaches", journal:"npj Systems Biology and Applications", impact:"", date:"2026-09-12", url:"https://www.nature.com/collections/heaibjjajc" },
+  { title:"CFP: Crosstalk Between Tissue-Resident Adaptive and Innate Memory Cells", journal:"Nature Immunology (IF 25.6)", impact:"25.6", date:"2026-11-02", url:"https://www.nature.com/collections/ccbcciachj" },
+  { title:"CFP: The immune cells landscape in the gut-liver axis", journal:"npj Gut and Liver", impact:"", date:"2026-05-14", url:"https://www.nature.com/collections/jjjihaaiee" },
+  { title:"CFP: Environmental Triggers and Autoimmune Diseases", journal:"npj Autoimmunity", impact:"", date:"2026-08-17", url:"https://www.nature.com/collections/icjbgiabeh" },
+  { title:"CFP: Immuno-senescence", journal:"npj Aging", impact:"", date:"2026-04-29", url:"https://www.nature.com/collections/jgafgefgic" },
+  { title:"CFP: Pollutants and Toxicology: Gut Microbiota Dysbiosis as a Critical Biomarker", journal:"npj Toxicology", impact:"", date:"2026-11-25", url:"https://www.nature.com/collections/cejcagffbf" },
+  { title:"CFP: DNA repair and human disease", journal:"Nature Structural and Molecular Biology", impact:"", date:"2026-04-30", url:"https://www.nature.com/collections/ehffcdddfb/" },
+  { title:"CFP: Pharmaceutical intellectual property", journal:"Humanities and Social Sciences Communications (IF 3.9)", impact:"3.9", date:"2026-11-24", url:"https://www.nature.com/collections/bffjbiagge" },
+  { title:"CFP: Research futures: opportunities, challenges, and competitiveness of doctoral and early-career researchers", journal:"Humanities and Social Sciences Communications (IF 3.9)", impact:"3.9", date:"2026-08-05", url:"https://www.nature.com/collections/jjbecghcag" },
+  { title:"CFP: Transcriptomics data from clinical isolates", journal:"Scientific Data (IF 4.0)", impact:"4.0", date:"2026-07-08", url:"https://www.nature.com/collections/aagedjdhjf" },
+  { title:"CFP: Medicinal Chemistry Approaches for Small-Molecule Drug Discovery", journal:"npj Drug Discovery", impact:"", date:"2026-06-30", url:"https://www.nature.com/collections/icgbagijjd" },
+  { title:"CFP: AI in Chemistry", journal:"npj Artificial Intelligence", impact:"", date:"2026-07-10", url:"https://www.nature.com/collections/gcbedibjhc" },
+  { title:"CFP: AI-Driven Innovation in Atmospheric Chemistry and Composition–Climate Interactions", journal:"npj Climate and Atmospheric Science", impact:"", date:"2026-10-31", url:"https://www.nature.com/collections/ggejajfbei" },
+  { title:"CFP: In pursuit of novel drug targets for cardiovascular disease", journal:"npj Cardiovascular Health", impact:"", date:"2026-03-25", url:"https://www.nature.com/collections/ciacchcidh" },
+  { title:"CFP: Bacteria, archaea and virus genomics", journal:"Scientific Data (IF 4.0)", impact:"4.0", date:"2026-12-12", url:"https://www.nature.com/collections/ejchgjiajh" },
+  { title:"CFP: Nutritional strategies to optimise the health outcomes of physical activity and exercise interventions", journal:"npj Exercise Medicine and Health", impact:"", date:"2026-11-25", url:"https://www.nature.com/collections/gjhabgbcha" },
+  { title:"CFP: Single-cell omics: from technology to biology (Reviews)", journal:"Experimental & Molecular Medicine", impact:"", date:"2026-12-02", url:"https://www.nature.com/collections/gffeedjjjb" },
+  { title:"CFP: Virome", journal:"npj Viruses", impact:"", date:"2026-07-31", url:"https://www.nature.com/collections/ggifegcdbj" },
+  { title:"CFP: Phages as antimicrobial therapy", journal:"npj Viruses", impact:"", date:"2026-08-21", url:"https://www.nature.com/collections/achdiaidjj" },
+  { title:"CFP: Antiviral Therapy", journal:"npj Viruses", impact:"", date:"2026-03-20", url:"https://www.nature.com/collections/jihcibajea" },
+  { title:"CFP: Emerging Fungal Pathogens", journal:"npj Fungal Science", impact:"", date:"2026-09-22", url:"https://www.nature.com/collections/hdiadchghc" },
+  { title:"CFP: Tropical cyclones impacts and preparedness", journal:"Nature Water", impact:"", date:"2026-06-30", url:"https://www.nature.com/collections/beigiaacce" },
+  { title:"CFP: Basic Psychological Needs and Well-Being", journal:"Nature Human Behaviour", impact:"", date:"2026-11-27", url:"https://www.nature.com/collections/diihddgjcg" },
+  { title:"CFP: Economics of Antimicrobial Resistance: Costs, Consequences, and Policy Responses", journal:"Value in Health Regional Issues", impact:"", date:"2026-04-30", url:"https://www.ispor.org/publications/journals/value-in-health-regional-issues/for-authors/call-for-papers" }
+];
+
+// ── 5. Active Research Projects (from mcphersonlab.github.io/research/projects) ──
+const activeProjects = [
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/ai-forecast-pharmacology\" target=\"_blank\" rel=\"noopener noreferrer\">ai-forecast-pharmacology<\/a>", questionHtml:"AI-driven pharmacological predictions", conferenceHtml:"<a href=\"https://www.iuphar.org/\" target=\"_blank\" rel=\"noopener noreferrer\">IUPHAR Annual<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://bpspubs.onlinelibrary.wiley.com/hub/call-for-papers\" target=\"_blank\" rel=\"noopener noreferrer\">British Journal of Pharmacology<\/a><\/strong><br><em>Deadline: May 01, 2026<\/em>", journalHtml:"Nature Reviews Drug Discovery", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/EarthEpi\" target=\"_blank\" rel=\"noopener noreferrer\">EarthEpi<\/a>", questionHtml:"Environmental epidemiology and climate-health relationships", conferenceHtml:"<a href=\"https://meetings.aaas.org/\" target=\"_blank\" rel=\"noopener noreferrer\">AAAS Annual<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://www.nature.com/collections/bagaffbjja\" target=\"_blank\" rel=\"noopener noreferrer\">Nature Microbiology/Nature Health<\/a><\/strong><br><em>Deadline: June 01, 2026<\/em>", journalHtml:"BMC Medicine", completionHtml:"1/1 (100%)" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/StormPath\" target=\"_blank\" rel=\"noopener noreferrer\">StormPath<\/a>", questionHtml:"Storm and weather impacts on infectious disease dynamics", conferenceHtml:"<a href=\"https://meetings.aaas.org/\" target=\"_blank\" rel=\"noopener noreferrer\">AAAS Annual<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://www.nature.com/collections/bagaffbjja\" target=\"_blank\" rel=\"noopener noreferrer\">Nature Microbiology/Nature Health<\/a><\/strong><br><em>Deadline: June 01, 2026<\/em>", journalHtml:"BMC Medicine", completionHtml:"0/1 (0%)" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/mgx-abx-healthy\" target=\"_blank\" rel=\"noopener noreferrer\">mgx-abx-healthy<\/a>", questionHtml:"Antibiotic effects on healthy gut microbiome", conferenceHtml:"<a href=\"https://acc-conference.com/\" target=\"_blank\" rel=\"noopener noreferrer\">BSAC and GARDP Antimicrobial Chemotherapy Conference<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://www.nature.com/collections/ihcfhcieic\" target=\"_blank\" rel=\"noopener noreferrer\">Nature Communications<\/a><\/strong><br><em>Deadline: May 31, 2026<\/em>", journalHtml:"Nature Communications", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/mgx-clostridioides-difficile\" target=\"_blank\" rel=\"noopener noreferrer\">mgx-clostridioides-difficile<\/a>", questionHtml:"Metagenomic analysis of C. difficile", conferenceHtml:"<a href=\"https://www.uh.edu/pharmacy/news-and-events/events/houston-cdiff-and-microbiome-conference/\" target=\"_blank\" rel=\"noopener noreferrer\">Houston <em>C diff<\/em> &amp; Microbiome Conference<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://www.nature.com/collections/iaadjjbbea\" target=\"_blank\" rel=\"noopener noreferrer\">npj Genomic Medicine<\/a><\/strong><br><em>Deadline: March 28, 2026<\/em>", journalHtml:"Nature Microbiology", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/mgx-mbx-abx-cdi\" target=\"_blank\" rel=\"noopener noreferrer\">mgx-mbx-abx-cdi<\/a>", questionHtml:"Metagenomic and metabolomic determinants of CDI", conferenceHtml:"<a href=\"https://www.uh.edu/pharmacy/news-and-events/events/houston-cdiff-and-microbiome-conference/\" target=\"_blank\" rel=\"noopener noreferrer\">Houston <em>C diff<\/em> &amp; Microbiome Conference<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://link.springer.com/collections/idddeddhgf\" target=\"_blank\" rel=\"noopener noreferrer\">BMC Personalized Medicine<\/a><\/strong><br><em>Deadline: August 05, 2026<\/em>", journalHtml:"Nature Microbiology", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/amr-acinetobacter-baumannii\" target=\"_blank\" rel=\"noopener noreferrer\">amr-acinetobacter-baumannii<\/a>", questionHtml:"Carbapenem-resistant <em>A. baumannii<\/em>", conferenceHtml:"<a href=\"https://imari.org\" target=\"_blank\" rel=\"noopener noreferrer\">IMARI Annual<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://www.nature.com/collections/cfbjiegbcg\" target=\"_blank\" rel=\"noopener noreferrer\">npj Antimicrobials and Resistance<\/a><\/strong><br><em>Deadline: June 24, 2026<\/em>", journalHtml:"Nature Microbiology", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/amr-enterococcus-faecium\" target=\"_blank\" rel=\"noopener noreferrer\">amr-enterococcus-faecium<\/a>", questionHtml:"VRE genomics and resistance", conferenceHtml:"<a href=\"https://www.tmc.edu/events/\" target=\"_blank\" rel=\"noopener noreferrer\">TMC AMR<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://www.nature.com/collections/cfbjiegbcg\" target=\"_blank\" rel=\"noopener noreferrer\">npj Antimicrobials and Resistance<\/a><\/strong><br><em>Deadline: June 24, 2026<\/em>", journalHtml:"Journal of Antimicrobial Chemotherapy", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/amr-klebsiella-pneumoniae\" target=\"_blank\" rel=\"noopener noreferrer\">amr-klebsiella-pneumoniae<\/a>", questionHtml:"Carbapenem-resistant <em>K. pneumoniae<\/em>", conferenceHtml:"<a href=\"https://www.idweek.org/\" target=\"_blank\" rel=\"noopener noreferrer\">IDSA IDWeek<\/a>; <a href=\"https://www.escmid.org/congress-events/escmid-global/\" target=\"_blank\" rel=\"noopener noreferrer\">ESCMID Annual<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://www.nature.com/collections/cfbjiegbcg\" target=\"_blank\" rel=\"noopener noreferrer\">npj Antimicrobials and Resistance<\/a><\/strong><br><em>Deadline: June 24, 2026<\/em>", journalHtml:"Nature Microbiology", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/ai-amr\" target=\"_blank\" rel=\"noopener noreferrer\">ai-amr<\/a>", questionHtml:"AI methods for antimicrobial resistance prediction", conferenceHtml:"<a href=\"https://imari.org\" target=\"_blank\" rel=\"noopener noreferrer\">IMARI Annual<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://axial.acs.org/medicinal-chemistry/call-for-papers-artificial-intelligence-for-next-generation-anti-infective-discovery\" target=\"_blank\" rel=\"noopener noreferrer\">ACS Infectious Diseases<\/a><\/strong><br><em>Deadline: April 01, 2026<\/em>", journalHtml:"Nature Machine Intelligence", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/MicroSCOPE\" target=\"_blank\" rel=\"noopener noreferrer\">MicroSCOPE<\/a>", questionHtml:"Microbial speciation from colony observation and prediction", conferenceHtml:"<a href=\"https://asm.org/events/asm-microbe\" target=\"_blank\" rel=\"noopener noreferrer\">ASM Microbe<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://www.nature.com/collections/eecajaidbe\" target=\"_blank\" rel=\"noopener noreferrer\">npj Antimicrobials and Resistance<\/a><\/strong><br><em>Deadline: April 07, 2026<\/em>", journalHtml:"Nature Microbiology", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/ai-forecast-influenza\" target=\"_blank\" rel=\"noopener noreferrer\">ai-forecast-influenza<\/a>", questionHtml:"AI forecasting of influenza dynamics", conferenceHtml:"<a href=\"https://www.asv.org/annual-meeting\" target=\"_blank\" rel=\"noopener noreferrer\">ASV Annual<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://www.nature.com/collections/jaibcfdhef\" target=\"_blank\" rel=\"noopener noreferrer\">npj Digital Medicine/npj Digital Public Health<\/a><\/strong><br><em>Deadline: May 15, 2026<\/em>", journalHtml:"The Lancet Infectious Diseases", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/ai-microbiome-transmission\" target=\"_blank\" rel=\"noopener noreferrer\">ai-microbiome-transmission<\/a>", questionHtml:"AI modeling of microbiome transmission", conferenceHtml:"<a href=\"https://asm.org/events/asm-microbe\" target=\"_blank\" rel=\"noopener noreferrer\">ASM Microbe<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://www.nature.com/collections/jaibcfdhef\" target=\"_blank\" rel=\"noopener noreferrer\">npj Digital Medicine/npj Digital Public Health<\/a><\/strong><br><em>Deadline: May 15, 2026<\/em>", journalHtml:"Nature Microbiology", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/MicrobiomeHUES\" target=\"_blank\" rel=\"noopener noreferrer\">MicrobiomeHUES<\/a>", questionHtml:"Hierarchical Unified Ecological Spectrum of the human microbiome", conferenceHtml:"<a href=\"https://asm.org/events/asm-microbe\" target=\"_blank\" rel=\"noopener noreferrer\">ASM Microbe<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://link.springer.com/collections/ddbhjfadca\" target=\"_blank\" rel=\"noopener noreferrer\">BMC Microbiology<\/a><\/strong><br><em>Deadline: May 20, 2026<\/em>", journalHtml:"Nature Microbiology", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/mgx-mbx-glp-1\" target=\"_blank\" rel=\"noopener noreferrer\">mgx-mbx-glp-1<\/a>", questionHtml:"GLP-1 agonists and gut microbiome interactions", conferenceHtml:"<a href=\"https://meetings.aaas.org/\" target=\"_blank\" rel=\"noopener noreferrer\">AAAS Annual<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://www.nature.com/collections/ihecbjhhdd\" target=\"_blank\" rel=\"noopener noreferrer\">npj Biofilms and Microbiomes<\/a><\/strong><br><em>Deadline: May 20, 2026<\/em>", journalHtml:"Nature Medicine", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/ai-structural-biology\" target=\"_blank\" rel=\"noopener noreferrer\">ai-structural-biology<\/a>", questionHtml:"Artificial intelligence methodology in structural biology", conferenceHtml:"<a href=\"https://www.biophysics.org/upcoming-annual-meetings\" target=\"_blank\" rel=\"noopener noreferrer\">Biophysical Society Annual<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://www.nature.com/collections/jbdjhghacg\" target=\"_blank\" rel=\"noopener noreferrer\">Nature Communications/Nature Structural &amp; Molecular Biology<\/a><\/strong><br><em>Deadline: May 31, 2026<\/em>", journalHtml:"Nature Methods", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/amr-pseudomonas-aeruginosa\" target=\"_blank\" rel=\"noopener noreferrer\">amr-pseudomonas-aeruginosa<\/a>", questionHtml:"Multidrug-resistant <em>P. aeruginosa<\/em>", conferenceHtml:"<a href=\"https://www.nacfconference.org/\" target=\"_blank\" rel=\"noopener noreferrer\">North American Cystic Fibrosis (CF) Conference<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://www.nature.com/collections/jhbbbdafac\" target=\"_blank\" rel=\"noopener noreferrer\">Nature Communications<\/a><\/strong><br><em>Deadline: May 31, 2026<\/em>", journalHtml:"Clinical Infectious Diseases", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/mgx-immunol-regulatory-t-cells\" target=\"_blank\" rel=\"noopener noreferrer\">mgx-immunol-regulatory-t-cells<\/a>", questionHtml:"Microbiome-immune regulatory T cell interactions", conferenceHtml:"<a href=\"https://meetings.aaas.org/\" target=\"_blank\" rel=\"noopener noreferrer\">AAAS Annual<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://www.nature.com/collections/ihcfhcieic\" target=\"_blank\" rel=\"noopener noreferrer\">Nature Communications<\/a><\/strong><br><em>Deadline: May 31, 2026<\/em>", journalHtml:"Nature Immunology", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/tx-cap\" target=\"_blank\" rel=\"noopener noreferrer\">tx-cap<\/a>", questionHtml:"Treatment of community-acquired pneumonia", conferenceHtml:"<a href=\"https://www.idweek.org/\" target=\"_blank\" rel=\"noopener noreferrer\">IDSA IDWeek<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://link.springer.com/collections/bgbhjabeba\" target=\"_blank\" rel=\"noopener noreferrer\">Antimicrobial Resistance &amp; Infection Control<\/a><\/strong><br><em>Deadline: June 25, 2026<\/em>", journalHtml:"Clinical Infectious Diseases", completionHtml:"0/2 (0%)" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/amr-aspergillus-fumigatus\" target=\"_blank\" rel=\"noopener noreferrer\">amr-aspergillus-fumigatus<\/a>", questionHtml:"Azole resistance in <em>A. fumigatus<\/em>", conferenceHtml:"<a href=\"https://msgerc.org/2026-biennial-meeting/\" target=\"_blank\" rel=\"noopener noreferrer\">MSGERC Biennial<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://link.springer.com/collections/ddhfibjigd\" target=\"_blank\" rel=\"noopener noreferrer\">BMC Immunology<\/a><\/strong><br><em>Deadline: June 26, 2026<\/em>", journalHtml:"Clinical Infectious Diseases", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/amr-candida-auris\" target=\"_blank\" rel=\"noopener noreferrer\">amr-candida-auris<\/a>", questionHtml:"Antifungal resistance in <em>C. auris<\/em>", conferenceHtml:"<a href=\"https://imari.org\" target=\"_blank\" rel=\"noopener noreferrer\">IMARI Annual<\/a>; <a href=\"https://msgerc.org/2026-biennial-meeting/\" target=\"_blank\" rel=\"noopener noreferrer\">MSGERC Biennial<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://link.springer.com/collections/ddhfibjigd\" target=\"_blank\" rel=\"noopener noreferrer\">BMC Immunology<\/a><\/strong><br><em>Deadline: June 26, 2026<\/em>", journalHtml:"Clinical Infectious Diseases", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/amr-lomentospora-prolificans\" target=\"_blank\" rel=\"noopener noreferrer\">amr-lomentospora-prolificans<\/a>", questionHtml:"Antifungal resistance in <em>L. prolificans<\/em>", conferenceHtml:"<a href=\"https://msgerc.org/2026-biennial-meeting/\" target=\"_blank\" rel=\"noopener noreferrer\">MSGERC Biennial<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://link.springer.com/collections/ddhfibjigd\" target=\"_blank\" rel=\"noopener noreferrer\">BMC Immunology<\/a><\/strong><br><em>Deadline: June 26, 2026<\/em>", journalHtml:"Clinical Infectious Diseases", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/amr-env-food\" target=\"_blank\" rel=\"noopener noreferrer\">amr-env-food<\/a>", questionHtml:"Antimicrobial resistance in the food chain", conferenceHtml:"<a href=\"https://www.csiro.au/en/about/challenges-missions/antimicrobial-resistance/amr-summit\" target=\"_blank\" rel=\"noopener noreferrer\">CSIRO AMR Summit<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://www.nature.com/collections/bbeihchhgf\" target=\"_blank\" rel=\"noopener noreferrer\">npj Antimicrobials and Resistance<\/a><\/strong><br><em>Deadline: July 08, 2026<\/em>", journalHtml:"Nature Microbiology", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/mgx-virome\" target=\"_blank\" rel=\"noopener noreferrer\">mgx-virome<\/a>", questionHtml:"Gut virome characterization", conferenceHtml:"<a href=\"https://www.asv.org/annual-meeting\" target=\"_blank\" rel=\"noopener noreferrer\">ASV Annual<\/a>; <a href=\"https://escv.eu/calendar-events/\" target=\"_blank\" rel=\"noopener noreferrer\">ESCV Annual<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://www.nature.com/npjbiofilms/calls-for-papers\" target=\"_blank\" rel=\"noopener noreferrer\">npj Biofilms and Microbiomes<\/a><\/strong><br><em>Deadline: July 15, 2026<\/em>", journalHtml:"Nature Microbiology", completionHtml:"—" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/amr-mycobacterium-tuberculosis\" target=\"_blank\" rel=\"noopener noreferrer\">amr-mycobacterium-tuberculosis<\/a>", questionHtml:"MDR-TB genomics", conferenceHtml:"TBD<br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://link.springer.com/collections/bajaefecgf\" target=\"_blank\" rel=\"noopener noreferrer\">BMC Microbiology<\/a><\/strong><br><em>Deadline: July 16, 2026<\/em>", journalHtml:"The Lancet Infectious Diseases", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/amr-clostridioides-difficile\" target=\"_blank\" rel=\"noopener noreferrer\">amr-clostridioides-difficile<\/a>", questionHtml:"Antimicrobial resistance in <em>C. difficile<\/em>", conferenceHtml:"<a href=\"http://www.anaerobe.org/2026/\" target=\"_blank\" rel=\"noopener noreferrer\">Anaerobe Biennial<\/a>; <a href=\"https://www.icds.si/\" target=\"_blank\" rel=\"noopener noreferrer\">9th International <em>C. difficile<\/em> Symposium (ICDS)<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://link.springer.com/collections/ffbaaggicb\" target=\"_blank\" rel=\"noopener noreferrer\">BMC Infectious Diseases<\/a><\/strong><br><em>Deadline: July 20, 2026<\/em>", journalHtml:"Nature Microbiology", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/amr-staphylococcus-aureus\" target=\"_blank\" rel=\"noopener noreferrer\">amr-staphylococcus-aureus<\/a>", questionHtml:"MRSA resistance mechanisms", conferenceHtml:"<a href=\"https://www.idweek.org/\" target=\"_blank\" rel=\"noopener noreferrer\">IDSA IDWeek<\/a>; <a href=\"https://www.escmid.org/congress-events/escmid-global/\" target=\"_blank\" rel=\"noopener noreferrer\">ESCMID Annual<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://link.springer.com/collections/fjheihhice\" target=\"_blank\" rel=\"noopener noreferrer\">BMC Infectious Diseases<\/a><\/strong><br><em>Deadline: July 20, 2026<\/em>", journalHtml:"Clinical Infectious Diseases", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/tx-staph-bacteremia\" target=\"_blank\" rel=\"noopener noreferrer\">tx-staph-bacteremia<\/a>", questionHtml:"Treatment of <em>Staphylococcal bacteremia<\/em>", conferenceHtml:"<a href=\"https://www.ashp.org/meetings-and-conferences/midyear-clinical-meeting-and-exhibition\" target=\"_blank\" rel=\"noopener noreferrer\">ASHP Midyear<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://link.springer.com/collections/fjheihhice\" target=\"_blank\" rel=\"noopener noreferrer\">BMC Infectious Diseases<\/a><\/strong><br><em>Deadline: July 20, 2026<\/em>", journalHtml:"Clinical Infectious Diseases", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/tx-uuti\" target=\"_blank\" rel=\"noopener noreferrer\">tx-uuti<\/a>", questionHtml:"Treatment of uncomplicated urinary tract infections", conferenceHtml:"<a href=\"https://www.idweek.org/\" target=\"_blank\" rel=\"noopener noreferrer\">IDSA IDWeek<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://link.springer.com/collections/aiffadagdf\" target=\"_blank\" rel=\"noopener noreferrer\">BMC Infectious Diseases<\/a><\/strong><br><em>Deadline: July 20, 2026<\/em>", journalHtml:"Clinical Infectious Diseases", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/amr-env-water\" target=\"_blank\" rel=\"noopener noreferrer\">amr-env-water<\/a>", questionHtml:"Antimicrobial resistance in wastewater surveillance", conferenceHtml:"<a href=\"https://www.csiro.au/en/about/challenges-missions/antimicrobial-resistance/amr-summit\" target=\"_blank\" rel=\"noopener noreferrer\">CSIRO AMR Summit<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://www.nature.com/collections/bjgbhdgcbf\" target=\"_blank\" rel=\"noopener noreferrer\">npj Antimicrobials and Resistance<\/a><\/strong><br><em>Deadline: July 28, 2026<\/em>", journalHtml:"Environmental Science &amp; Technology", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/DOOR-STEP\" target=\"_blank\" rel=\"noopener noreferrer\">DOOR-STEP<\/a>", questionHtml:"Desirability of Outcome Ranking with Stratified Treatment Effect Profiling", conferenceHtml:"<a href=\"https://www.idweek.org/\" target=\"_blank\" rel=\"noopener noreferrer\">IDSA IDWeek<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://link.springer.com/collections/hgihdahcfj\" target=\"_blank\" rel=\"noopener noreferrer\">BMC Medical Research Methodology<\/a><\/strong><br><em>Deadline: July 30, 2026<\/em>", journalHtml:"Clinical Infectious Diseases", completionHtml:"1/1 (100%)" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/DigitalTwin-Society-Health\" target=\"_blank\" rel=\"noopener noreferrer\">DigitalTwin-Society-Health<\/a>", questionHtml:"Digital twin of society’s health for implementation science", conferenceHtml:"<a href=\"https://meetings.aaas.org/\" target=\"_blank\" rel=\"noopener noreferrer\">AAAS Annual<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://implementationscience.biomedcentral.com/\" target=\"_blank\" rel=\"noopener noreferrer\">Implementation Science<\/a><\/strong><br><em>Deadline: TBD<\/em>", journalHtml:"Nature Medicine", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/PharmacyEducation\" target=\"_blank\" rel=\"noopener noreferrer\">PharmacyEducation<\/a>", questionHtml:"National trends in pharmacy education outcomes", conferenceHtml:"<a href=\"https://www.aacp.org/events/annual-meetings\" target=\"_blank\" rel=\"noopener noreferrer\">AACP Annual<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://journals.lww.com/academicmedicine/pages/default.aspx\" target=\"_blank\" rel=\"noopener noreferrer\">Academic Medicine<\/a><\/strong><br><em>Deadline: TBD<\/em>", journalHtml:"American Journal of Pharmaceutical Education", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/SpaceTime\" target=\"_blank\" rel=\"noopener noreferrer\">SpaceTime<\/a>", questionHtml:"Spatiotemporal model of receptors, enzymes, and pharmacology", conferenceHtml:"<a href=\"https://www.iuphar.org/\" target=\"_blank\" rel=\"noopener noreferrer\">IUPHAR Annual<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://molpharm.aspetjournals.org/\" target=\"_blank\" rel=\"noopener noreferrer\">Molecular Pharmacology<\/a><\/strong><br><em>Deadline: TBD<\/em>", journalHtml:"Nature Reviews Drug Discovery", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/amr-hiv\" target=\"_blank\" rel=\"noopener noreferrer\">amr-hiv<\/a>", questionHtml:"HIV drug resistance", conferenceHtml:"<a href=\"https://www.croiconference.org/\" target=\"_blank\" rel=\"noopener noreferrer\">CROI Annual<\/a>; <a href=\"https://www.asv.org/annual-meeting\" target=\"_blank\" rel=\"noopener noreferrer\">ASV Annual<\/a>; <a href=\"https://escv.eu/calendar-events/\" target=\"_blank\" rel=\"noopener noreferrer\">ESCV Annual<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://www.nature.com/nmicrobiol/\" target=\"_blank\" rel=\"noopener noreferrer\">Nature Microbiology<\/a><\/strong><br><em>Deadline: TBD<\/em>", journalHtml:"The Lancet HIV", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/amr-neisseria-gonorrhoeae\" target=\"_blank\" rel=\"noopener noreferrer\">amr-neisseria-gonorrhoeae<\/a>", questionHtml:"AMR in <em>N. gonorrhoeae<\/em>", conferenceHtml:"<a href=\"https://imari.org\" target=\"_blank\" rel=\"noopener noreferrer\">IMARI Annual<\/a>; <a href=\"https://www.csiro.au/en/about/challenges-missions/antimicrobial-resistance/amr-summit\" target=\"_blank\" rel=\"noopener noreferrer\">CSIRO AMR Summit<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://www.nature.com/collections/bjgbhdgcbf\" target=\"_blank\" rel=\"noopener noreferrer\">npj Antimicrobials and Resistance<\/a><\/strong><br><em>Deadline: TBD<\/em>", journalHtml:"The Lancet Infectious Diseases", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/biophysics-proteins-as-complex-machines-of-physics\" target=\"_blank\" rel=\"noopener noreferrer\">biophysics-proteins-as-complex-machines-of-physics<\/a>", questionHtml:"Biophysical analysis of protein machinery", conferenceHtml:"<a href=\"https://www.biophysics.org/upcoming-annual-meetings\" target=\"_blank\" rel=\"noopener noreferrer\">Biophysical Society Annual<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://www.cell.com/biophysj/home\" target=\"_blank\" rel=\"noopener noreferrer\">Biophysical Journal<\/a><\/strong><br><em>Deadline: TBD<\/em>", journalHtml:"Nature Structural &amp; Molecular Biology", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/clostridioides_atlas\" target=\"_blank\" rel=\"noopener noreferrer\">clostridioides_atlas<\/a>", questionHtml:"Atlas of <em>C. difficile<\/em> phylogeography, AMR, and host-microbe interactions", conferenceHtml:"<a href=\"https://www.uh.edu/pharmacy/news-and-events/events/houston-cdiff-and-microbiome-conference/\" target=\"_blank\" rel=\"noopener noreferrer\">Houston <em>C diff<\/em> &amp; Microbiome Conference<\/a>; <a href=\"https://www.icds.si/\" target=\"_blank\" rel=\"noopener noreferrer\">9th International <em>C. difficile<\/em> Symposium (ICDS)<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://link.springer.com/collections/fbfahacdhi\" target=\"_blank\" rel=\"noopener noreferrer\">Microbiome<\/a><\/strong><br><em>Deadline: TBD<\/em>", journalHtml:"Nature Microbiology", completionHtml:"1/2 (50%)" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/cost-amr\" target=\"_blank\" rel=\"noopener noreferrer\">cost-amr<\/a>", questionHtml:"Economic burden of antimicrobial resistance", conferenceHtml:"<a href=\"https://www.gamric.org/\" target=\"_blank\" rel=\"noopener noreferrer\">Global AMR Innovators’ Conference (GAMRIC)<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://academic.oup.com/idsa/pages/calls-for-papers\" target=\"_blank\" rel=\"noopener noreferrer\">Clinical Infectious Diseases<\/a><\/strong><br><em>Deadline: Ongoing<\/em>", journalHtml:"The Lancet Infectious Diseases", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/epi-hbv\" target=\"_blank\" rel=\"noopener noreferrer\">epi-hbv<\/a>", questionHtml:"Requirements of HBV elimination in the United States", conferenceHtml:"<a href=\"https://www.aasld.org/the-liver-meeting\" target=\"_blank\" rel=\"noopener noreferrer\">AASLD Annual<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://www.thelancet.com/journals/laninf/home\" target=\"_blank\" rel=\"noopener noreferrer\">The Lancet Infectious Diseases<\/a><\/strong><br><em>Deadline: TBD<\/em>", journalHtml:"Hepatology", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/mgx-cap\" target=\"_blank\" rel=\"noopener noreferrer\">mgx-cap<\/a>", questionHtml:"Pulmonary metagenomics of community-acquired pneumonia", conferenceHtml:"<a href=\"https://www.idweek.org/\" target=\"_blank\" rel=\"noopener noreferrer\">IDSA IDWeek<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://www.thelancet.com/journals/laninf/home\" target=\"_blank\" rel=\"noopener noreferrer\">The Lancet Infectious Diseases<\/a><\/strong><br><em>Deadline: TBD<\/em>", journalHtml:"Clinical Infectious Diseases", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/mgx-cdi-vre\" target=\"_blank\" rel=\"noopener noreferrer\">mgx-cdi-vre<\/a>", questionHtml:"C. difficile and VRE co-colonization", conferenceHtml:"<a href=\"https://www.uh.edu/pharmacy/news-and-events/events/houston-cdiff-and-microbiome-conference/\" target=\"_blank\" rel=\"noopener noreferrer\">Houston <em>C diff<\/em> &amp; Microbiome Conference<\/a>; <a href=\"https://www.tmc.edu/events/\" target=\"_blank\" rel=\"noopener noreferrer\">TMC AMR<\/a>; <a href=\"https://www.icds.si/\" target=\"_blank\" rel=\"noopener noreferrer\">9th International <em>C. difficile<\/em> Symposium (ICDS)<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://www.tandfonline.com/journals/kgmi20\" target=\"_blank\" rel=\"noopener noreferrer\">Gut Microbes<\/a><\/strong><br><em>Deadline: TBD<\/em>", journalHtml:"Nature Microbiology", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/mgx-mbx-colorectal-cancer\" target=\"_blank\" rel=\"noopener noreferrer\">mgx-mbx-colorectal-cancer<\/a>", questionHtml:"Microbiome and metabolome in colorectal cancer", conferenceHtml:"<a href=\"https://meetings.aaas.org/\" target=\"_blank\" rel=\"noopener noreferrer\">AAAS Annual<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://www.cell.com/cell-host-microbe/home\" target=\"_blank\" rel=\"noopener noreferrer\">Cell Host &amp; Microbe<\/a><\/strong><br><em>Deadline: TBD<\/em>", journalHtml:"Nature Medicine", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/pcol-biofilm-rifamycins\" target=\"_blank\" rel=\"noopener noreferrer\">pcol-biofilm-rifamycins<\/a>", questionHtml:"Pharmacology of RNAP-targeting rifamycins on biofilms", conferenceHtml:"<a href=\"https://www.idweek.org/\" target=\"_blank\" rel=\"noopener noreferrer\">IDSA IDWeek<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://journals.asm.org/asm-calls-for-papers\" target=\"_blank\" rel=\"noopener noreferrer\">mBio<\/a><\/strong><br><em>Deadline: Ongoing<\/em>", journalHtml:"Antimicrobial Agents and Chemotherapy", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/pcol-vcddmde-hbv\" target=\"_blank\" rel=\"noopener noreferrer\">pcol-vcddmde-hbv<\/a>", questionHtml:"Pharmacology of DdmDE degradation of HBV cccDNA", conferenceHtml:"<a href=\"https://www.aasld.org/the-liver-meeting\" target=\"_blank\" rel=\"noopener noreferrer\">AASLD Annual<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://journals.asm.org/journal/jvi\" target=\"_blank\" rel=\"noopener noreferrer\">Journal of Virology<\/a><\/strong><br><em>Deadline: TBD<\/em>", journalHtml:"Hepatology", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/pharm-comm-ai\" target=\"_blank\" rel=\"noopener noreferrer\">pharm-comm-ai<\/a>", questionHtml:"Interactive AI module for pharmacy student communication training", conferenceHtml:"<a href=\"https://www.aacp.org/events/annual-meetings\" target=\"_blank\" rel=\"noopener noreferrer\">AACP Annual<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://www.nature.com/collections/hcdeibadid\" target=\"_blank\" rel=\"noopener noreferrer\">npj Digital Medicine<\/a><\/strong><br><em>Deadline: June 03, 2026<\/em>", journalHtml:"Nature Medicine", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/phys-hiv-lenacapavir\" target=\"_blank\" rel=\"noopener noreferrer\">phys-hiv-lenacapavir<\/a>", questionHtml:"Structure and physical properties of HIV-1 capsid hyperstabilization by lenacapavir", conferenceHtml:"<a href=\"https://www.croiconference.org/\" target=\"_blank\" rel=\"noopener noreferrer\">CROI Annual<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://journals.asm.org/journal/jvi\" target=\"_blank\" rel=\"noopener noreferrer\">Journal of Virology<\/a><\/strong><br><em>Deadline: TBD<\/em>", journalHtml:"Nature Structural &amp; Molecular Biology", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/roi-cdi\" target=\"_blank\" rel=\"noopener noreferrer\">roi-cdi<\/a>", questionHtml:"Return on investment analysis for CDI interventions", conferenceHtml:"<a href=\"https://www.icds.si/\" target=\"_blank\" rel=\"noopener noreferrer\">9th International <em>C. difficile<\/em> Symposium (ICDS)<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://www.journals.elsevier.com/value-in-health\" target=\"_blank\" rel=\"noopener noreferrer\">Value in Health<\/a><\/strong><br><em>Deadline: TBD<\/em>", journalHtml:"Clinical Infectious Diseases", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/roi-pipeline-antimicrobial\" target=\"_blank\" rel=\"noopener noreferrer\">roi-pipeline-antimicrobial<\/a>", questionHtml:"ROI analysis for antimicrobial drug development", conferenceHtml:"<a href=\"https://www.ispor.org/conferences-education\" target=\"_blank\" rel=\"noopener noreferrer\">ISPOR Annual<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://link.springer.com/journal/40273\" target=\"_blank\" rel=\"noopener noreferrer\">Pharmacoeconomics<\/a><\/strong><br><em>Deadline: TBD<\/em>", journalHtml:"Value in Health", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/structure-function-pharmacology\" target=\"_blank\" rel=\"noopener noreferrer\">structure-function-pharmacology<\/a>", questionHtml:"Structure-function relationships in pharmacology", conferenceHtml:"<a href=\"https://www.iuphar.org/\" target=\"_blank\" rel=\"noopener noreferrer\">IUPHAR Annual<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://molpharm.aspetjournals.org/\" target=\"_blank\" rel=\"noopener noreferrer\">Molecular Pharmacology<\/a><\/strong><br><em>Deadline: TBD<\/em>", journalHtml:"Nature Reviews Drug Discovery", completionHtml:"0/0" },
+  { projectHtml:"<a href=\"https://github.com/mcphersonlab/tx-cdi\" target=\"_blank\" rel=\"noopener noreferrer\">tx-cdi<\/a>", questionHtml:"Treatment of <em>C. difficile<\/em> infection", conferenceHtml:"<a href=\"https://www.icds.si/\" target=\"_blank\" rel=\"noopener noreferrer\">9th International <em>C. difficile<\/em> Symposium (ICDS)<\/a><br><em>Abstract: TBD<\/em>", callHtml:"<strong><a href=\"https://www.tandfonline.com/journals/kgmi20\" target=\"_blank\" rel=\"noopener noreferrer\">Gut Microbes<\/a><\/strong><br><em>Deadline: TBD<\/em>", journalHtml:"Clinical Infectious Diseases", completionHtml:"0/1 (0%)" }
+];
+
+// ── 6. Lab Life Events ───────────────────────────────────────────
+// Media Day: Winter (January 15) and Summer (July 15), generated
+// programmatically for all years in the calendar range
+function generateMediaDay(startYear, endYear) {
+  const events = [];
+  for (let year = startYear; year <= endYear; year++) {
+    events.push({ title:"🎬 Media Day (Winter)", start:`${year}-01-15`, end:`${year}-01-16`, details:`Bi-annual lab media day — Winter edition. Photo, video, and communications update.`, category:"lablife" });
+    events.push({ title:"🎬 Media Day (Summer)", start:`${year}-07-15`, end:`${year}-07-16`, details:`Bi-annual lab media day — Summer edition. Photo, video, and communications update.`, category:"lablife" });
+  }
+  return events;
+}
+function generateAnnualLabLifeEvents(startYear, endYear, recurringEvents) {
+  const events = [];
+  for (let year = startYear; year <= endYear; year++) {
+    recurringEvents.forEach(event => {
+      const { monthDay, ...eventProps } = event;
+      events.push({
+        ...eventProps,
+        start: `${year}-${monthDay}`
+      });
+    });
+  }
+  return events;
+}
+const mixersElixirsEvents = [
+  { title:"🍸 Mixers & Elixirs: Atoms & Attractions", start:"2026-02-13", details:"Houston Museum of Natural Science adults-only night (7–11 PM).", url:"https://www.hmns.org/visit/events/mixers-and-elixirs/" },
+  { title:"🍸 Mixers & Elixirs: ’90s Night (Sugar Land)", start:"2026-05-15", details:"HMNS Sugar Land Mixers & Elixirs (7–11 PM).", url:"https://www.hmns.org/visit/events/mixers-and-elixirs/" },
+  { title:"🍸 Mixers & Elixirs: ’80s Night", start:"2026-06-12", details:"Houston Museum of Natural Science adults-only night (7–11 PM).", url:"https://www.hmns.org/visit/events/mixers-and-elixirs/" },
+  { title:"🍸 Mixers & Elixirs: Masquerade Night", start:"2026-07-10", details:"Houston Museum of Natural Science adults-only night (7–11 PM).", url:"https://www.hmns.org/visit/events/mixers-and-elixirs/" },
+  { title:"🍸 Mixers & Elixirs: Latin Night", start:"2026-08-14", details:"Houston Museum of Natural Science adults-only night (7–11 PM).", url:"https://www.hmns.org/visit/events/mixers-and-elixirs/" },
+  { title:"🍸 Mixers & Elixirs: Spirits & Skeletons", start:"2026-10-31", details:"HMNS Mixers & Elixirs Halloween night (9 PM–1 AM).", url:"https://www.hmns.org/visit/events/mixers-and-elixirs/" },
+  { title:"🍸 Mixers & Elixirs: New Year’s Eve", start:"2026-12-31", details:"HMNS Mixers & Elixirs New Year’s Eve party (9 PM–1 AM).", url:"https://www.hmns.org/visit/events/mixers-and-elixirs/" }
+];
+const recurringLabLifeEvents = [
+  { title:"🇬🇷 Niko Niko's — Greek Independence Day", monthDay:"03-25", details:"Annual Greek Independence Day outing at Niko Niko's.", category:"lablife" },
+  { title:"🇲🇽 Hugo's — Mexico's Independence Day", monthDay:"09-16", details:"Annual Mexico's Independence Day outing at Hugo's.", category:"lablife" }
+];
+const labLifeStatic = [
+  ...generateMediaDay(2025, 2030),
+  ...generateAnnualLabLifeEvents(2025, 2030, recurringLabLifeEvents),
+  ...mixersElixirsEvents
+];
+
+// ── 6. Houston / Austin Venue Events ────────────────────────────
+const venueStatic = [
+  // Austin City Limits Music Festival (October, 2 weekends)
+  { title:"🎵 Austin City Limits Music Festival (Wknd 1)", start:"2026-10-02", end:"2026-10-05", location:"Zilker Park, Austin, TX", url:"https://aclfestival.com/", category:"venue" },
+  { title:"🎵 Austin City Limits Music Festival (Wknd 2)", start:"2026-10-09", end:"2026-10-12", location:"Zilker Park, Austin, TX", url:"https://aclfestival.com/", category:"venue" },
+  // South by Southwest (March)
+  { title:"🎸 South by Southwest (SXSW)", start:"2026-03-13", end:"2026-03-22", location:"Austin, TX", url:"https://www.sxsw.com/", category:"venue" },
+  // Austin Food & Wine Festival (April)
+  { title:"🍷 Austin Food & Wine Festival", start:"2026-04-24", end:"2026-04-27", location:"Austin, TX", url:"https://austinfoodandwinefestival.com/", category:"venue" },
+  // Austin Film Festival (October)
+  { title:"🎬 Austin Film Festival", start:"2026-10-22", end:"2026-10-27", location:"Austin, TX", url:"https://www.austinfilmfestival.com/", category:"venue" },
+  // Trail of Lights (December, Austin)
+  { title:"✨ Trail of Lights", start:"2026-12-10", end:"2026-12-24", location:"Zilker Park, Austin, TX", url:"https://austintrailoflights.org/", category:"venue" },
+  // Houston area festivals & events
+  { title:"🎭 Mardi Gras! Galveston", start:"2026-02-06", end:"2026-02-18", location:"Historic Strand District, Galveston, TX", url:"https://www.mardigrasgalveston.com/", category:"venue" },
+  { title:"🤠 Houston Livestock Show and Rodeo", start:"2026-03-02", end:"2026-03-23", location:"NRG Park, Houston, TX", url:"https://www.rodeohouston.com/", category:"venue" },
+  { title:"🎨 Bayou City Art Festival (Downtown)", start:"2026-03-28", end:"2026-03-30", location:"Sam Houston Park & Allen Parkway, Houston, TX", url:"https://www.bayoucityartfestival.com/", category:"venue" },
+  { title:"🍽️ Houston Restaurant Week", start:"2026-08-01", end:"2026-09-01", location:"Houston, TX", url:"https://houstonrestaurantweeks.com/", category:"venue" },
+  { title:"🎌 Japan Festival Houston", start:"2026-09-12", end:"2026-09-14", location:"Hermann Park, Houston, TX", url:"https://hermannpark.org/event/japan-festival/", category:"venue" }
+];
+
+// ── Helper: generate weekly events (e.g. Run Club, Happy Hour) ──
+function generateWeekly(title, dayOfWeek, startISO, endISO, details, category, meta = {}) {
+  const events = [];
+  let cur = new Date(startISO + "T00:00:00");
+  const endDate = new Date(endISO + "T00:00:00");
+  // Advance to first matching weekday
+  while (cur.getDay() !== dayOfWeek) cur.setDate(cur.getDate() + 1);
+  while (cur <= endDate) {
+    const y = cur.getFullYear();
+    const m = String(cur.getMonth()+1).padStart(2,"0");
+    const d = String(cur.getDate()).padStart(2,"0");
+    events.push({ title, start: `${y}-${m}-${d}`, details, category, ...meta });
+    cur.setDate(cur.getDate() + 7);
+  }
+  return events;
+}
+
+// ── Helper: generate monthly venue events (cycling through venues) ──
+function generateMonthlyVenues(venueList, startISO, endISO) {
+  const events = [];
+  const endDate = new Date(endISO + "T00:00:00");
+  let cur = new Date(startISO + "T00:00:00");
+  cur.setDate(1); // start of month
+  let idx = 0;
+  while (cur <= endDate) {
+    const venue = venueList[idx % venueList.length];
+    // Use 3rd Saturday of month
+    const month = cur.getMonth();
+    const year = cur.getFullYear();
+    // Find first Saturday
+    let day = new Date(year, month, 1);
+    while (day.getDay() !== 6) day.setDate(day.getDate() + 1);
+    day.setDate(day.getDate() + 14); // 3rd Saturday
+    if (day <= endDate) {
+      const y = day.getFullYear();
+      const m = String(day.getMonth()+1).padStart(2,"0");
+      const d = String(day.getDate()).padStart(2,"0");
+      events.push({
+        title: `🏛️ ${venue.name}`,
+        start: `${y}-${m}-${d}`,
+        location: venue.location,
+        url: venue.url,
+        details: venue.details,
+        category: "venue"
+      });
+    }
+    idx++;
+    cur.setMonth(cur.getMonth() + 1);
+  }
+  return events;
+}
+
+// Houston monthly venues (rotation)
+const houstonVenues = [
+  { name:"Houston Museum of Natural Science", location:"5555 Hermann Park Dr, Houston, TX", url:"https://www.hmns.org/", details:"Monthly visit to the Houston Museum of Natural Science." },
+  { name:"Houston Symphony", location:"615 Louisiana St, Houston, TX", url:"https://www.houstonsymphony.org/", details:"Monthly Houston Symphony performance." },
+  { name:"Miller Outdoor Theatre", location:"6000 Hermann Park Dr, Houston, TX", url:"https://milleroutdoortheatre.com/", details:"Monthly Miller Outdoor Theatre event (free outdoor performances)." },
+  { name:"Houston Zoo", location:"6200 Hermann Park Dr, Houston, TX", url:"https://www.houstonzoo.org/", details:"Monthly visit to the Houston Zoo." }
+];
+
+// Generate recurring events
+const runClubMonday   = generateWeekly("🏃 Run Club (River Oaks)", 1, "2025-10-01", "2027-12-31", "Weekly Monday Run Club — River Oaks", "lablife");   // 1 = Monday
+const runClubThursday = generateWeekly("🏃 Run Club (Greenbriar)",  4, "2025-10-01", "2027-12-31", "Weekly Thursday Run Club — Greenbriar", "lablife"); // 4 = Thursday
+const mfahHappyHour = generateWeekly(
+  "🎨 MFAH Friday Happy Hour",
+  5,
+  "2026-01-02",
+  "2027-12-31",
+  "Happy Hour Fridays at the Museum of Fine Arts, Houston (5–8 PM).",
+  "lablife",
+  { url: "https://www.mfah.org/events/happy-hour" }
+);
+const monthlyVenueEvents = generateMonthlyVenues(houstonVenues, "2025-10-01", "2027-12-31");
+
+// ================================================================
+//  ASSEMBLE FullCalendar events array
+// ================================================================
+
+// Normalize and validate URLs (http/https only).
+const normalizeUrl = (url) => {
+  if (!url) return undefined;
+  const trimmed = String(url).trim();
+  if (!trimmed) return undefined;
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      return parsed.href;
+    }
+  } catch {
+    return undefined;
+  }
+  return undefined;
+};
+
+function buildAllEvents() {
+  const events = [];
+
+  // Conferences — blue
+  const abstractEvents = [];
+  conferences.forEach(c => {
+    const ev = {
+      title: `📅 ${c.title}`,
+      start: c.start,
+      end: c.end,
+      order: 0,
+      color: "#0d6efd",
+      url: normalizeUrl(c.url),
+      extendedProps: {
+        category: "conference",
+        location: c.location || "",
+        url: c.url || "",
+        cfpOpen: c.cfpOpen || "",
+        cfpClose: c.cfpClose || "",
+        cfpNote: c.cfpNote || ""
+      }
+    };
+    events.push(ev);
+
+    // Abstract submission window — cyan, shown as a separate multi-day event
+    if (c.cfpOpen || c.cfpClose) {
+      // Start = cfpOpen if available, else cfpClose day (single-day)
+      // End   = cfpClose + 1 day (FullCalendar end is exclusive) if available
+      const winStart = c.cfpOpen || c.cfpClose;
+      const winEnd   = c.cfpClose
+        ? (() => { const d = new Date(c.cfpClose + "T00:00:00"); d.setDate(d.getDate()+1); return d.toISOString().slice(0,10); })()
+        : undefined;
+      abstractEvents.push({
+        title: `📋 Abstracts: ${c.title}`,
+        start: winStart,
+        end: winEnd,
+        order: 1,
+        color: "rgba(13,202,240,0.1)",
+        textColor: "#00495a",
+        url: normalizeUrl(c.url),
+        extendedProps: {
+          category: "abstract",
+          conference: c.title,
+          cfpOpen: c.cfpOpen || "",
+          cfpClose: c.cfpClose || "",
+          cfpNote: c.cfpNote || "",
+          url: c.url || ""
+        }
+      });
+    }
+  });
+
+  // Calls for Papers — red
+  callsForPapers.forEach(p => {
+    events.push({
+      title: `📝 ${p.title}`,
+      start: p.date,
+      allDay: true,
+      order: 0,
+      color: "#dc3545",
+      url: normalizeUrl(p.url),
+      extendedProps: {
+        category: "cfp",
+        journal: p.journal || "",
+        url: p.url || "",
+        deadline: p.date
+      }
+    });
+  });
+
+  // Trainee Deadlines — violet
+  traineeDeadlineEvents.forEach(e => {
+    events.push({
+      title: e.title,
+      start: e.start,
+      allDay: true,
+      order: 3,
+      color: "rgba(102,16,242,0.12)",
+      textColor: "#6610f2",
+      extendedProps: {
+        category: "trainee",
+        detail: e.detail || "",
+        phase: e.phase || ""
+      }
+    });
+  });
+
+  // Lab Life static events — green
+  labLifeStatic.forEach(e => {
+    events.push({
+      title: e.title,
+      start: e.start,
+      end: e.end,
+      order: 2,
+      color: "rgba(25,135,84,0.1)",
+      textColor: "#198754",
+      url: normalizeUrl(e.url),
+      extendedProps: { category: "lablife", details: e.details }
+    });
+  });
+
+  // Run Club Monday (River Oaks) — green
+  runClubMonday.forEach(e => {
+    events.push({
+      title: e.title,
+      start: e.start,
+      order: 2,
+      color: "rgba(40,167,69,0.1)",
+      textColor: "#198754",
+      url: normalizeUrl(e.url),
+      extendedProps: { category: "lablife", details: e.details }
+    });
+  });
+
+  // Run Club Thursday (Greenbriar) — green
+  runClubThursday.forEach(e => {
+    events.push({
+      title: e.title,
+      start: e.start,
+      order: 2,
+      color: "rgba(40,167,69,0.1)",
+      textColor: "#198754",
+      url: normalizeUrl(e.url),
+      extendedProps: { category: "lablife", details: e.details }
+    });
+  });
+
+  // MFAH Happy Hour Fridays — green
+  mfahHappyHour.forEach(e => {
+    events.push({
+      title: e.title,
+      start: e.start,
+      order: 2,
+      color: "rgba(25,135,84,0.1)",
+      textColor: "#198754",
+      url: normalizeUrl(e.url),
+      extendedProps: { category: "lablife", details: e.details }
+    });
+  });
+
+  // Venue static events — purple
+  venueStatic.forEach(e => {
+    events.push({
+      title: e.title,
+      start: e.start,
+      end: e.end || undefined,
+      order: 2,
+      color: "rgba(111,66,193,0.1)",
+      textColor: "#6f42c1",
+      url: normalizeUrl(e.url),
+      extendedProps: { category: "venue", location: e.location || "", url: normalizeUrl(e.url) || "" }
+    });
+  });
+
+  // Monthly Houston venues — purple
+  monthlyVenueEvents.forEach(e => {
+    events.push({
+      title: e.title,
+      start: e.start,
+      order: 2,
+      color: "rgba(111,66,193,0.1)",
+      textColor: "#6f42c1",
+      url: normalizeUrl(e.url),
+      extendedProps: {
+        category: "venue",
+        location: e.location || "",
+        url: normalizeUrl(e.url) || "",
+        details: e.details || ""
+      }
+    });
+  });
+
+  // NIH Grant Deadlines — UT burnt orange
+  nihGrantDeadlines.forEach(e => {
+    events.push({
+      title: e.title,
+      start: e.date,
+      allDay: true,
+      order: 0,
+      color: "#BF5700",
+      url: normalizeUrl(e.url),
+      extendedProps: {
+        category: "nih",
+        detail: e.detail || "",
+        note: e.note || "",
+        url: e.url || ""
+      }
+    });
+  });
+
+  // Abstract submission events are pushed last so they appear at the bottom
+  abstractEvents.forEach(e => events.push(e));
+
+  return events;
+}
+
+// ================================================================
+//  MODAL HELPERS
+// ================================================================
+// Open external links on click when available; otherwise show the modal.
+function handleEventClick(info) {
+  const eventUrl = info.event.url;
+  if (eventUrl) {
+    info.jsEvent.preventDefault();
+    window.open(eventUrl, "_blank", "noopener,noreferrer");
+    return;
+  }
+  openModal(info);
+}
+
+function openModal(info) {
+  const ep = info.event.extendedProps;
+  const color = info.event.backgroundColor || "#555";
+  document.getElementById("event-modal-colorbar").style.background = color;
+  document.getElementById("modal-title").textContent = info.event.title.replace(/^[^\s]+\s/, "");
+
+  let rows = "";
+  const fmt = (label, val) => val ? `<tr><td>${label}</td><td>${val}</td></tr>` : "";
+  const eventUrl = info.event.url;
+
+  if (ep.category === "conference") {
+    const dateRange = info.event.end
+      ? `${fmtDate(info.event.start)} – ${fmtDate(new Date(info.event.end.getTime()-86400000))}`
+      : fmtDate(info.event.start);
+    rows += fmt("Dates", dateRange);
+    rows += fmt("Location", ep.location);
+    if (ep.cfpOpen || ep.cfpClose) {
+      const cfp = [ep.cfpOpen && `Open: ${ep.cfpOpen}`, ep.cfpClose && `Close: ${ep.cfpClose}`].filter(Boolean).join(" | ");
+      rows += fmt("Abstract Submission", cfp);
+    }
+    if (ep.cfpNote) rows += fmt("Note", ep.cfpNote);
+    if (eventUrl) rows += fmt("Website", `<a href="${eventUrl}" target="_blank" rel="noopener noreferrer">Visit →</a>`);
+  } else if (ep.category === "abstract") {
+    rows += fmt("Conference", ep.conference);
+    if (ep.cfpOpen) rows += fmt("Opens", fmtDate(ep.cfpOpen));
+    if (ep.cfpClose) rows += fmt("Closes", fmtDate(ep.cfpClose));
+    if (ep.cfpNote) rows += fmt("Note", ep.cfpNote);
+    if (eventUrl) rows += fmt("Website", `<a href="${eventUrl}" target="_blank" rel="noopener noreferrer">Visit →</a>`);
+  } else if (ep.category === "cfp") {
+    rows += fmt("Deadline", fmtDate(info.event.start));
+    rows += fmt("Journal", ep.journal);
+    if (eventUrl) rows += fmt("Website", `<a href="${eventUrl}" target="_blank" rel="noopener noreferrer">Visit →</a>`);
+  } else if (ep.category === "trainee") {
+    rows += fmt("Date", fmtDate(info.event.start));
+    if (ep.phase) rows += fmt("Event", ep.phase);
+    if (ep.detail) rows += fmt("Details", ep.detail);
+  } else if (ep.category === "lablife") {
+    rows += fmt("Details", ep.details);
+  } else if (ep.category === "venue") {
+    rows += fmt("Location", ep.location);
+    if (ep.details) rows += fmt("Details", ep.details);
+    if (eventUrl) rows += fmt("Website", `<a href="${eventUrl}" target="_blank" rel="noopener noreferrer">Visit →</a>`);
+  } else if (ep.category === "nih") {
+    rows += fmt("Deadline", fmtDate(info.event.start));
+    if (ep.detail) rows += fmt("Type", ep.detail);
+    if (ep.note) rows += fmt("Note", ep.note);
+    if (eventUrl) rows += fmt("Website", `<a href="${eventUrl}" target="_blank" rel="noopener noreferrer">Visit →</a>`);
+  }
+
+  document.getElementById("modal-table").innerHTML = rows;
+  document.getElementById("event-modal-overlay").classList.add("open");
+}
+
+function closeModal() {
+  document.getElementById("event-modal-overlay").classList.remove("open");
+}
+
+// Close on overlay click
+document.addEventListener("DOMContentLoaded", function() {
+  document.getElementById("event-modal-overlay").addEventListener("click", function(e) {
+    if (e.target === this) closeModal();
+  });
+});
+
+function fmtDate(d) {
+  if (!d) return "";
+  const dt = (typeof d === "string") ? new Date(d + "T00:00:00") : d;
+  return dt.toLocaleDateString("en-US", { year:"numeric", month:"long", day:"numeric" });
+}
+
+function isPastDeadline(dateStr) {
+  if (!dateStr) return false;
+  const deadline = new Date(dateStr + "T00:00:00");
+  if (isNaN(deadline.getTime())) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today > deadline;
+}
+
+const agendaDoneStorageKey = "mcphersonlab-calendar-agenda-done";
+const minComparableAgendaTitleLength = 12;
+let agendaDoneItems = new Set();
+
+function parseLocalDate(dateStr) {
+  if (!dateStr) return null;
+  const date = new Date(dateStr + "T00:00:00");
+  return isNaN(date.getTime()) ? null : date;
+}
+
+function getTodayLocal() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today;
+}
+
+function loadAgendaDoneItems() {
+  try {
+    const stored = window.localStorage.getItem(agendaDoneStorageKey);
+    const parsed = stored ? JSON.parse(stored) : [];
+    return new Set(Array.isArray(parsed) ? parsed : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveAgendaDoneItems() {
+  try {
+    window.localStorage.setItem(agendaDoneStorageKey, JSON.stringify([...agendaDoneItems]));
+  } catch {
+    // Ignore storage failures and keep the current in-memory state.
+  }
+}
+
+function buildAgendaItemId(prefix, title, dateStr) {
+  return [prefix, title, dateStr || ""].join("::");
+}
+
+// Returns plain text for use with textContent-based rendering.
+function formatCallTitle(title, fallback = "Call for Papers") {
+  const cleaned = String(title || "")
+    .replace(/^CFP:\s*/, "")
+    .replace(/<[^>]*>/g, "")
+    .trim();
+  return cleaned || fallback;
+}
+
+function parseHtmlDocument(html) {
+  return new DOMParser().parseFromString(String(html || ""), "text/html");
+}
+
+function stripHtmlToText(html) {
+  const parsed = parseHtmlDocument(html);
+  return (parsed.body.textContent || "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeMatchText(value) {
+  return stripHtmlToText(value)
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function normalizeComparableUrl(url) {
+  const normalized = normalizeUrl(url);
+  return normalized ? normalized.replace(/\/+$/, "") : "";
+}
+
+function extractComparableUrls(html) {
+  const parsed = parseHtmlDocument(html);
+  return [...parsed.querySelectorAll("a")]
+    .map(link => normalizeComparableUrl(link.getAttribute("href")))
+    .filter(Boolean);
+}
+
+function extractComparableLinkTexts(html) {
+  const parsed = parseHtmlDocument(html);
+  return [...parsed.querySelectorAll("a")]
+    .map(link => normalizeMatchText(link.textContent))
+    .filter(Boolean);
+}
+
+function extractGithubRepoUrl(html) {
+  const parsed = parseHtmlDocument(html);
+  const repoLink = [...parsed.querySelectorAll("a")]
+    .map(link => link.getAttribute("href"))
+    .find(href => /^https:\/\/github\.com\/[^/]+\/[^/]+\/?$/i.test(String(href || "").trim()));
+  return repoLink ? repoLink.replace(/\/+$/, "") : "";
+}
+
+function isComparableTitleMatch(sourceTitle, candidateTitle) {
+  if (!sourceTitle || !candidateTitle) return false;
+  if (sourceTitle === candidateTitle) return true;
+  const shorter = sourceTitle.length <= candidateTitle.length ? sourceTitle : candidateTitle;
+  const longer = shorter === sourceTitle ? candidateTitle : sourceTitle;
+  return shorter.length >= minComparableAgendaTitleLength && longer.includes(shorter);
+}
+
+function getAgendaItemProjects(itemType, sourceItem) {
+  if (!Array.isArray(activeProjects) || !sourceItem) return [];
+
+  const sourceUrl = normalizeComparableUrl(sourceItem.url);
+  const sourceTitle = normalizeMatchText(sourceItem.title);
+
+  return activeProjects
+    .filter(project => {
+      const projectFieldHtml = itemType === "abstract" ? project.conferenceHtml : project.callHtml;
+      if (!projectFieldHtml) return false;
+
+      if (sourceUrl && extractComparableUrls(projectFieldHtml).includes(sourceUrl)) {
+        return true;
+      }
+
+      if (itemType === "abstract" && sourceTitle) {
+        return extractComparableLinkTexts(projectFieldHtml)
+          .some(linkText => isComparableTitleMatch(sourceTitle, linkText));
+      }
+
+      return false;
+    })
+    .map(project => ({
+      name: stripHtmlToText(project.projectHtml) || "Project",
+      href: extractGithubRepoUrl(project.projectHtml),
+      completion: formatAgendaProjectCompletion(project)
+    }));
+}
+
+function formatAgendaProjectCompletion(project) {
+  const raw = String((project && project.completionHtml) || "").trim();
+  const value = getProjectCompletionValue(project);
+  if (value === null || value === undefined) return raw || "—";
+  if (raw.includes("%")) return raw;
+  return `${Math.round(value)}% (${raw})`;
+}
+
+function buildAgendaSections() {
+  const today = getTodayLocal();
+  const currentAbstracts = conferences
+    .filter(conference => {
+      const closeDate = parseLocalDate(conference.cfpClose);
+      if (!closeDate) return false;
+      const openDate = parseLocalDate(conference.cfpOpen);
+      return openDate ? (today >= openDate && today <= closeDate) : today <= closeDate;
+    })
+    .sort((a, b) => parseLocalDate(a.cfpClose) - parseLocalDate(b.cfpClose))
+    .map(conference => ({
+      id: buildAgendaItemId("abstract", conference.title, conference.cfpClose || conference.cfpOpen),
+      title: conference.title,
+      href: normalizeUrl(conference.url),
+      meta: [
+        conference.cfpOpen ? `Opened ${fmtDate(conference.cfpOpen)}` : "Open now",
+        conference.cfpClose ? `Closes ${fmtDate(conference.cfpClose)}` : ""
+      ].filter(Boolean).join(" • "),
+      detail: conference.location || conference.cfpNote || "",
+      projects: getAgendaItemProjects("abstract", conference)
+    }));
+
+  const upcomingCallsForPapers = callsForPapers
+    .filter(call => {
+      const deadline = parseLocalDate(call.date);
+      return deadline && deadline >= today;
+    })
+    .sort((a, b) => parseLocalDate(a.date) - parseLocalDate(b.date))
+    .slice(0, 5)
+    .map(call => ({
+      id: buildAgendaItemId("cfp", call.title, call.date),
+      title: formatCallTitle(call.title),
+      href: normalizeUrl(call.url),
+      meta: `Due ${fmtDate(call.date)}`,
+      detail: call.journal || "",
+      projects: getAgendaItemProjects("cfp", call)
+    }));
+
+  const nextNihDeadline = nihGrantDeadlines
+    .filter(deadline => {
+      const dueDate = parseLocalDate(deadline.date);
+      return dueDate && dueDate >= today;
+    })
+    .sort((a, b) => parseLocalDate(a.date) - parseLocalDate(b.date))
+    .slice(0, 1)
+    .map(deadline => ({
+      id: buildAgendaItemId("nih", deadline.title, deadline.date),
+      title: deadline.title,
+      href: normalizeUrl(deadline.url),
+      meta: `Due ${fmtDate(deadline.date)}`,
+      detail: [deadline.detail, deadline.note].filter(Boolean).join(" • ")
+    }));
+
+  const nextConferences = conferences
+    .filter(conference => {
+      const startDate = parseLocalDate(conference.start);
+      return startDate && startDate >= today;
+    })
+    .sort((a, b) => parseLocalDate(a.start) - parseLocalDate(b.start))
+    .slice(0, 2)
+    .map(conference => ({
+      id: buildAgendaItemId("conference", conference.title, conference.start),
+      title: conference.title,
+      href: normalizeUrl(conference.url),
+      meta: `${fmtDate(conference.start)}${conference.end ? ` – ${fmtDate(conference.end)}` : ""}`,
+      detail: conference.location || ""
+    }));
+
+  return [
+    {
+      key: "abstracts",
+      title: "Current Calls for Abstracts",
+      emptyMessage: "No abstract windows are currently open.",
+      items: currentAbstracts
+    },
+    {
+      key: "cfps",
+      title: "Next Five Calls for Papers",
+      emptyMessage: "No upcoming calls for papers are available.",
+      items: upcomingCallsForPapers
+    },
+    {
+      key: "nih",
+      title: "Next NIH Submission Deadline",
+      emptyMessage: "No upcoming NIH submission deadline is available.",
+      items: nextNihDeadline
+    },
+    {
+      key: "conferences",
+      title: "Next Two Conferences",
+      emptyMessage: "No upcoming conferences are available.",
+      items: nextConferences
+    }
+  ];
+}
+
+function setAgendaItemDone(itemId, isDone) {
+  if (isDone) {
+    agendaDoneItems.add(itemId);
+  } else {
+    agendaDoneItems.delete(itemId);
+  }
+  saveAgendaDoneItems();
+  renderAgenda();
+}
+
+function createAgendaItemElement(item, isDone) {
+  const listItem = document.createElement("li");
+  listItem.className = `agenda-item${isDone ? " agenda-item-done" : ""}`;
+
+  const header = document.createElement("div");
+  header.className = "agenda-item-header";
+
+  const content = document.createElement("div");
+  content.className = "agenda-item-content";
+
+  const titleElement = item.href ? document.createElement("a") : document.createElement("span");
+  titleElement.className = "agenda-item-title";
+  titleElement.textContent = item.title;
+  if (item.href) {
+    titleElement.href = item.href;
+    titleElement.target = "_blank";
+    titleElement.rel = "noopener noreferrer";
+  }
+  content.appendChild(titleElement);
+
+  if (item.meta) {
+    const meta = document.createElement("p");
+    meta.className = "agenda-item-meta";
+    meta.textContent = item.meta;
+    content.appendChild(meta);
+  }
+
+  if (item.detail) {
+    const detail = document.createElement("p");
+    detail.className = "agenda-item-detail";
+    detail.textContent = item.detail;
+    content.appendChild(detail);
+  }
+
+  if (Array.isArray(item.projects)) {
+    const projectsWrapper = document.createElement("div");
+    projectsWrapper.className = "agenda-item-projects";
+
+    const projectsLabel = document.createElement("p");
+    projectsLabel.className = "agenda-item-projects-label";
+    projectsLabel.textContent = "Targeting projects";
+    projectsWrapper.appendChild(projectsLabel);
+
+    if (item.projects.length) {
+      const projectsList = document.createElement("ul");
+      projectsList.className = "agenda-item-project-list";
+      item.projects.forEach(project => {
+        const projectItem = document.createElement("li");
+        projectItem.className = "agenda-item-project";
+
+        const name = project.href ? document.createElement("a") : document.createElement("span");
+        name.className = "agenda-item-project-name";
+        name.textContent = project.name;
+        if (project.href) {
+          name.href = project.href;
+          name.target = "_blank";
+          name.rel = "noopener noreferrer";
+        }
+        projectItem.appendChild(name);
+
+        const completion = document.createElement("span");
+        completion.className = "agenda-item-project-completion";
+        completion.textContent = project.completion;
+        projectItem.appendChild(completion);
+
+        projectsList.appendChild(projectItem);
+      });
+      projectsWrapper.appendChild(projectsList);
+    } else {
+      const emptyProjects = document.createElement("p");
+      emptyProjects.className = "agenda-item-projects-empty";
+      emptyProjects.textContent = "No active projects linked yet.";
+      projectsWrapper.appendChild(emptyProjects);
+    }
+
+    content.appendChild(projectsWrapper);
+  }
+
+  header.appendChild(content);
+
+  const action = document.createElement("button");
+  action.type = "button";
+  action.className = `agenda-action${isDone ? " agenda-action-secondary" : ""}`;
+  action.textContent = isDone ? "Undo" : "Done";
+  action.addEventListener("click", () => setAgendaItemDone(item.id, !isDone));
+  header.appendChild(action);
+
+  listItem.appendChild(header);
+  return listItem;
+}
+
+function renderAgendaSections(container, sections, isDone) {
+  if (!container) return;
+  container.innerHTML = "";
+
+  if (isDone) {
+    const doneSections = sections
+      .map(section => ({
+        ...section,
+        items: section.items.filter(item => agendaDoneItems.has(item.id))
+      }))
+      .filter(section => section.items.length);
+
+    if (!doneSections.length) {
+      const empty = document.createElement("p");
+      empty.className = "agenda-empty";
+      empty.textContent = "No agenda items marked done yet.";
+      container.appendChild(empty);
+      return;
+    }
+
+    doneSections.forEach(section => {
+      const sectionEl = document.createElement("section");
+      sectionEl.className = "agenda-group";
+
+      const title = document.createElement("h4");
+      title.textContent = section.title;
+      sectionEl.appendChild(title);
+
+      const list = document.createElement("ul");
+      list.className = "agenda-list";
+      section.items.forEach(item => list.appendChild(createAgendaItemElement(item, true)));
+      sectionEl.appendChild(list);
+      container.appendChild(sectionEl);
+    });
+
+    return;
+  }
+
+  sections.forEach(section => {
+    const activeItems = section.items.filter(item => !agendaDoneItems.has(item.id));
+    const sectionEl = document.createElement("section");
+    sectionEl.className = "agenda-group";
+
+    const title = document.createElement("h3");
+    title.textContent = section.title;
+    sectionEl.appendChild(title);
+
+    if (!activeItems.length) {
+      const empty = document.createElement("p");
+      empty.className = "agenda-empty";
+      empty.textContent = section.emptyMessage;
+      sectionEl.appendChild(empty);
+    } else {
+      const list = document.createElement("ul");
+      list.className = "agenda-list";
+      activeItems.forEach(item => list.appendChild(createAgendaItemElement(item, false)));
+      sectionEl.appendChild(list);
+    }
+
+    container.appendChild(sectionEl);
+  });
+}
+
+function renderAgenda() {
+  const sections = buildAgendaSections();
+  renderAgendaSections(document.getElementById("agenda-active"), sections, false);
+  renderAgendaSections(document.getElementById("agenda-done"), sections, true);
+}
+
+// ================================================================
+//  PROJECTS TABLE
+// ================================================================
+
+const projectsSortState = {
+  key: null,
+  direction: "asc"
+};
+
+function getProjectCallDeadline(project) {
+  const callHtml = String((project && project.callHtml) || "");
+  const m = callHtml.match(/Deadline:\s*([A-Za-z]+\s+\d{1,2},\s*\d{4})/);
+  if (!m) return "";
+  const d = new Date(m[1]);
+  if (isNaN(d.getTime())) return "";
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getProjectCompletionValue(project) {
+  const text = String((project && project.completionHtml) || "").trim();
+  if (!text || text === "—") return null;
+  const pctMatch = text.match(/\((\d+)%\)/);
+  if (pctMatch) return Number.parseFloat(pctMatch[1]);
+  const fracMatch = text.match(/^(\d+)\/(\d+)$/);
+  if (fracMatch) {
+    const den = Number.parseFloat(fracMatch[2]);
+    if (den === 0) return 0;
+    return (Number.parseFloat(fracMatch[1]) / den) * 100;
+  }
+  return null;
+}
+
+function getSortedProjects(projects) {
+  if (!Array.isArray(projects)) return [];
+  if (!projectsSortState.key) return [...projects];
+
+  const { key, direction } = projectsSortState;
+  const multiplier = direction === "desc" ? -1 : 1;
+
+  return [...projects].sort((a, b) => {
+    let comparison = 0;
+
+    if (key === "call") {
+      const aDate = getProjectCallDeadline(a);
+      const bDate = getProjectCallDeadline(b);
+      if (!aDate && !bDate) {
+        comparison = 0;
+      } else if (!aDate) {
+        comparison = 1;
+      } else if (!bDate) {
+        comparison = -1;
+      } else {
+        comparison = aDate.localeCompare(bDate) * multiplier;
+      }
+    } else if (key === "completion") {
+      const aVal = getProjectCompletionValue(a);
+      const bVal = getProjectCompletionValue(b);
+      const aMissing = aVal == null;
+      const bMissing = bVal == null;
+      const missingComparison = Number(aMissing) - Number(bMissing);
+      if (missingComparison !== 0) {
+        comparison = missingComparison;
+      } else {
+        comparison = aMissing ? 0 : (aVal - bVal) * multiplier;
+      }
+    }
+
+    if (comparison !== 0) return comparison;
+
+    const aName = String((a && a.projectHtml) || "").replace(/<[^>]*>/g, "");
+    const bName = String((b && b.projectHtml) || "").replace(/<[^>]*>/g, "");
+    return aName.localeCompare(bName);
+  });
+}
+
+function updateProjectsSortButtons() {
+  document.querySelectorAll("#projects-table .table-sort").forEach(button => {
+    const indicator = button.querySelector(".sort-indicator");
+    const isActive = button.dataset.sortKey === projectsSortState.key;
+    button.setAttribute("aria-pressed", isActive ? "true" : "false");
+    if (indicator) {
+      indicator.textContent = isActive
+        ? (projectsSortState.direction === "desc" ? "↓" : "↑")
+        : "↕";
+    }
+  });
+}
+
+function setProjectsSort(key) {
+  const defaultDirection = key === "completion" ? "desc" : "asc";
+  if (projectsSortState.key === key) {
+    projectsSortState.direction = projectsSortState.direction === "asc" ? "desc" : "asc";
+  } else {
+    projectsSortState.key = key;
+    projectsSortState.direction = defaultDirection;
+  }
+
+  renderProjectsTable(activeProjects);
+  updateProjectsSortButtons();
+}
+
+function renderProjectsTable(projects) {
+  const tbody = document.getElementById("projects-tbody");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+  if (!projects || !projects.length) {
+    tbody.innerHTML = '<tr><td class="projects-error" colspan="6">No projects data available.</td></tr>';
+    return;
+  }
+  getSortedProjects(projects).forEach(project => {
+    const row = document.createElement("tr");
+    if (isPastDeadline(getProjectCallDeadline(project))) {
+      row.classList.add("past-deadline-row");
+    }
+    [
+      project.projectHtml,
+      project.questionHtml,
+      project.conferenceHtml,
+      project.callHtml,
+      project.journalHtml
+    ].forEach(html => {
+      const cell = document.createElement("td");
+      cell.innerHTML = html;
+      row.appendChild(cell);
+    });
+    const completionCell = document.createElement("td");
+    completionCell.className = "completion-cell";
+    completionCell.textContent = project.completionHtml || "—";
+    row.appendChild(completionCell);
+    tbody.appendChild(row);
+  });
+}
+
+function loadProjectsTable() {
+  renderProjectsTable(activeProjects);
+  renderUnlinkedCallsForPapersTable(unlinkedCallsForPapers);
+  updateProjectsSortButtons();
+  updateUnlinkedCfpsSortButtons();
+}
+
+const unlinkedCfpsSortState = {
+  key: "date",
+  direction: "asc"
+};
+
+function getUnlinkedCfpJournalInfo(cfp) {
+  const rawJournal = String((cfp && cfp.journal) || "").trim();
+  const suffixMatch = rawJournal.match(/^(.*)\s*\(IF\s*([0-9]+(?:\.[0-9]+)?)\)$/i);
+  const journal = (suffixMatch && suffixMatch[1] ? suffixMatch[1].trim() : "") || rawJournal;
+  const impactText = String((cfp && cfp.impact) || (suffixMatch && suffixMatch[2]) || "").trim();
+  const impactValue = Number.parseFloat(impactText);
+  return {
+    journal,
+    impactText,
+    impactValue: Number.isFinite(impactValue) ? impactValue : null
+  };
+}
+
+function getSortedUnlinkedCallsForPapers(callForPapers) {
+  if (!Array.isArray(callForPapers)) return [];
+  if (!unlinkedCfpsSortState.key) return [...callForPapers];
+
+  const { key, direction } = unlinkedCfpsSortState;
+  const multiplier = direction === "desc" ? -1 : 1;
+
+  return [...callForPapers].sort((a, b) => {
+    let comparison = 0;
+
+    if (key === "impact") {
+      const aImpact = getUnlinkedCfpJournalInfo(a).impactValue;
+      const bImpact = getUnlinkedCfpJournalInfo(b).impactValue;
+      const aMissing = aImpact == null;
+      const bMissing = bImpact == null;
+      const missingComparison = Number(aMissing) - Number(bMissing);
+      if (missingComparison !== 0) {
+        comparison = missingComparison;
+      } else {
+        comparison = aMissing ? 0 : (aImpact - bImpact) * multiplier;
+      }
+    } else if (key === "date") {
+      const aDate = String((a && a.date) || "");
+      const bDate = String((b && b.date) || "");
+      if (!aDate && !bDate) {
+        comparison = 0;
+      } else if (!aDate) {
+        comparison = 1;
+      } else if (!bDate) {
+        comparison = -1;
+      } else {
+        comparison = aDate.localeCompare(bDate) * multiplier;
+      }
+    }
+
+    if (comparison !== 0) return comparison;
+
+    const aTitle = String((a && (a.title || a.journal)) || "");
+    const bTitle = String((b && (b.title || b.journal)) || "");
+    return aTitle.localeCompare(bTitle);
+  });
+}
+
+function updateUnlinkedCfpsSortButtons() {
+  document.querySelectorAll("#unlinked-cfps-table .table-sort").forEach(button => {
+    const indicator = button.querySelector(".sort-indicator");
+    const isActive = button.dataset.sortKey === unlinkedCfpsSortState.key;
+    button.setAttribute("aria-pressed", isActive ? "true" : "false");
+    if (indicator) {
+      indicator.textContent = isActive
+        ? (unlinkedCfpsSortState.direction === "desc" ? "↓" : "↑")
+        : "↕";
+    }
+  });
+}
+
+function setUnlinkedCfpsSort(key) {
+  const defaultDirection = key === "impact" ? "desc" : "asc";
+  if (unlinkedCfpsSortState.key === key) {
+    unlinkedCfpsSortState.direction = unlinkedCfpsSortState.direction === "asc" ? "desc" : "asc";
+  } else {
+    unlinkedCfpsSortState.key = key;
+    unlinkedCfpsSortState.direction = defaultDirection;
+  }
+
+  renderUnlinkedCallsForPapersTable(unlinkedCallsForPapers);
+  updateUnlinkedCfpsSortButtons();
+}
+
+function renderUnlinkedCallsForPapersTable(callForPapers) {
+  const tbody = document.getElementById("unlinked-cfps-tbody");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+  if (!callForPapers || !callForPapers.length) {
+    tbody.innerHTML = '<tr><td class="projects-error" colspan="4">All calls for papers are already linked to active projects.</td></tr>';
+    return;
+  }
+  getSortedUnlinkedCallsForPapers(callForPapers).forEach(cfp => {
+    const row = document.createElement("tr");
+    if (isPastDeadline(cfp.date)) {
+      row.classList.add("past-deadline-row");
+    }
+    const titleCell = document.createElement("td");
+    const displayTitle = formatCallTitle(cfp.title, cfp.journal || "Call for Papers");
+    const href = normalizeUrl(cfp.url);
+    if (href) {
+      const link = document.createElement("a");
+      link.href = href;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = displayTitle;
+      titleCell.appendChild(link);
+    } else {
+      titleCell.textContent = displayTitle;
+    }
+
+    const journalInfo = getUnlinkedCfpJournalInfo(cfp);
+    const journalCell = document.createElement("td");
+    journalCell.textContent = journalInfo.journal || cfp.journal || "";
+
+    const impactCell = document.createElement("td");
+    impactCell.textContent = journalInfo.impactText || "—";
+
+    const deadlineCell = document.createElement("td");
+    deadlineCell.textContent = fmtDate(cfp.date) || cfp.date || "";
+
+    row.appendChild(titleCell);
+    row.appendChild(journalCell);
+    row.appendChild(impactCell);
+    row.appendChild(deadlineCell);
+    tbody.appendChild(row);
+  });
+}
+
+// ================================================================
+//  FILTER
+// ================================================================
+let allEvents = [];
+let calendarInstance = null;
+
+function applyFilters() {
+  if (!calendarInstance) return;
+  const show = {
+    conference: document.getElementById("chk-conference").checked,
+    abstract:   document.getElementById("chk-abstract").checked,
+    cfp:        document.getElementById("chk-cfp").checked,
+    trainee:    document.getElementById("chk-trainee").checked,
+    lablife:    document.getElementById("chk-lablife").checked,
+    venue:      document.getElementById("chk-venue").checked,
+    nih:        document.getElementById("chk-nih").checked
+  };
+  const filtered = allEvents.filter(e => show[e.extendedProps.category]);
+  calendarInstance.removeAllEvents();
+  calendarInstance.addEventSource(filtered);
+}
+
+// ================================================================
+//  INIT FullCalendar
+// ================================================================
+document.addEventListener("DOMContentLoaded", function() {
+  loadProjectsTable();
+  agendaDoneItems = loadAgendaDoneItems();
+  renderAgenda();
+
+  allEvents = buildAllEvents();
+
+  const calEl = document.getElementById("calendar");
+  if (typeof FullCalendar === "undefined") {
+    calEl.replaceChildren();
+    const errorMessage = document.createElement("p");
+    errorMessage.className = "calendar-error";
+    errorMessage.textContent = "Calendar view is temporarily unavailable because the calendar library could not be loaded.";
+    calEl.appendChild(errorMessage);
+    return;
+  }
+  calendarInstance = new FullCalendar.Calendar(calEl, {
+    initialView: "dayGridMonth",
+    initialDate: new Date().toISOString().slice(0,10),
+    height: "auto",
+    headerToolbar: {
+      left:   "prev,next today",
+      center: "title",
+      right:  "dayGridMonth,timeGridWeek,listMonth"
+    },
+    buttonText: {
+      today:     "Today",
+      month:     "Month",
+      week:      "Week",
+      listMonth: "List"
+    },
+    events: allEvents,
+    eventOrder: "order,start,-duration,allDay,title",
+    eventClick: handleEventClick,
+    eventTimeFormat: { hour: "numeric", minute: "2-digit", omitZeroMinute: true },
+    nowIndicator: true,
+    dayMaxEvents: 4
+  });
+
+  calendarInstance.render();
+});
+</script>
+```
