@@ -34,7 +34,7 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Sync calendar data from mcphersonlab/mcphersonlab.github.io
+      - name: Sync calendar data
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
         env:
           # Use a PAT (if configured) so completion works for internal repos.
@@ -48,7 +48,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add calendar/index.qmd
           if ! git diff --staged --quiet; then
-            git commit -m "chore: sync calendar from mcphersonlab/mcphersonlab.github.io"
+            git commit -m "chore: sync calendar"
             git push
           else
             echo "No calendar changes to commit"
