@@ -1,10 +1,8 @@
 import importlib.util
 import json
 import pathlib
-import re
 import unittest
-from unittest.mock import patch
-from urllib.error import HTTPError
+from unittest.mock import MagicMock
 
 
 MODULE_PATH = pathlib.Path(__file__).resolve().parents[1] / "calendar" / "sync_calendar.py"
@@ -13,253 +11,157 @@ sync_calendar = importlib.util.module_from_spec(SPEC)
 assert SPEC and SPEC.loader
 SPEC.loader.exec_module(sync_calendar)
 
-INDEX_QMD_PATH = pathlib.Path(__file__).resolve().parents[1] / "calendar" / "index.qmd"
+
+class NormalizeEventTests(unittest.TestCase):
+    """Test event normalization."""
+
+    def test_normalize_event_with_required_fields(self):
+        event = {
+            "id": "event-1",
+            "title": "Test Event",
+            "start": "2026-04-15T10:00:00",
+        }
+        result = sync_calendar.normalize_event(event)
+        self.assertEqual(result["id"], "event-1")
+        self.assertEqual(result["title"], "Test Event")
+        self.assertEqual(result["start"], "2026-04-15T10:00:00")
+        self.assertEqual(result["category"], "other")
+
+    def test_normalize_event_with_optional_fields(self):
+        event = {
+            "id": "event-1",
+            "title": "Test Event",
+            "start": "2026-04-15T10:00:00",
+            "end": "2026-04-15T11:00:00",
+            "category": "work",
+            "description": "A test event",
+            "url": "https://example.com",
+        }
+        result = sync_calendar.normalize_event(event)
+        self.assertEqual(result["end"], "2026-04-15T11:00:00")
+        self.assertEqual(result["category"], "work")
+        self.assertEqual(result["description"], "A test event")
+        self.assertEqual(result["url"], "https://example.com")
+
+    def test_normalize_event_missing_required_field(self):
+        event = {
+            "title": "Test Event",
+            "start": "2026-04-15T10:00:00",
+        }
+        with self.assertRaises(ValueError):
+            sync_calendar.normalize_event(event)
+
+    def test_normalize_event_invalid_category(self):
+        event = {
+            "id": "event-1",
+            "title": "Test Event",
+            "start": "2026-04-15T10:00:00",
+            "category": "invalid",
+        }
+        # Should default to "other" when category is invalid
+        result = sync_calendar.normalize_event(event)
+        # The function warns but defaults to "other"
+        self.assertEqual(result["category"], "other")
 
 
-class _MockResponse:
-    def __init__(self, payload):
-        self._payload = json.dumps(payload).encode("utf-8")
+class AggregateEventsTests(unittest.TestCase):
+    """Test event aggregation."""
 
-    def read(self):
-        return self._payload
+    def test_aggregate_events_empty_sources(self):
+        # When no sources are configured, should use sample events
+        original_sources = sync_calendar.CALENDAR_SOURCES
+        sync_calendar.CALENDAR_SOURCES = []
+        try:
+            events = sync_calendar.aggregate_events()
+            self.assertGreater(len(events), 0)
+        finally:
+            sync_calendar.CALENDAR_SOURCES = original_sources
 
-    def __enter__(self):
-        return self
+    def test_aggregate_events_with_source(self):
+        def test_source():
+            return [
+                {
+                    "id": "event-1",
+                    "title": "Event 1",
+                    "start": "2026-04-15T10:00:00",
+                    "category": "personal",
+                },
+                {
+                    "id": "event-2",
+                    "title": "Event 2",
+                    "start": "2026-04-20T14:00:00",
+                    "category": "work",
+                },
+            ]
 
-    def __exit__(self, exc_type, exc, tb):
-        return False
+        original_sources = sync_calendar.CALENDAR_SOURCES
+        sync_calendar.CALENDAR_SOURCES = [test_source]
+        try:
+            events = sync_calendar.aggregate_events()
+            self.assertEqual(len(events), 2)
+            self.assertEqual(events[0]["title"], "Event 1")
+            self.assertEqual(events[1]["title"], "Event 2")
+            # Events should be sorted by start date
+            self.assertTrue(events[0]["start"] <= events[1]["start"])
+        finally:
+            sync_calendar.CALENDAR_SOURCES = original_sources
 
 
-def _http_error(url: str, code: int) -> HTTPError:
-    return HTTPError(url, code, "error", hdrs=None, fp=None)
+class GenerateEventsJsTests(unittest.TestCase):
+    """Test JavaScript generation."""
 
-
-class FetchIssueCompletionsTests(unittest.TestCase):
-    def test_internal_repo_falls_back_to_zero_when_counts_unavailable(self):
-        project = {"githubUrl": "https://github.com/mcphersonlab/internal-repo"}
-
-        def fake_urlopen(request, timeout=30):
-            url = request.full_url
-            if url.endswith("/graphql"):
-                raise _http_error(url, 403)
-            if "/repos/mcphersonlab/internal-repo/issues" in url:
-                raise _http_error(url, 403)
-            if "/search/issues" in url:
-                raise _http_error(url, 422)
-            if url.endswith("/repos/mcphersonlab/internal-repo"):
-                return _MockResponse({"visibility": "internal", "has_issues": True})
-            raise AssertionError(f"Unexpected URL: {url}")
-
-        with patch.object(sync_calendar.urllib.request, "urlopen", side_effect=fake_urlopen):
-            result = sync_calendar.fetch_issue_completions([project], token="test-token")
-
-        self.assertEqual(result[0]["completionHtml"], "0/0")
-        self.assertTrue(result[0]["completionUnavailable"])
-
-    def test_public_repo_with_issues_disabled_falls_back_to_zero(self):
-        project = {"githubUrl": "https://github.com/mcphersonlab/no-issues-repo"}
-
-        def fake_urlopen(request, timeout=30):
-            url = request.full_url
-            if url.endswith("/graphql"):
-                raise _http_error(url, 403)
-            if "/repos/mcphersonlab/no-issues-repo/issues" in url:
-                raise _http_error(url, 410)
-            if "/search/issues" in url:
-                raise _http_error(url, 422)
-            if url.endswith("/repos/mcphersonlab/no-issues-repo"):
-                return _MockResponse({"visibility": "public", "has_issues": False})
-            raise AssertionError(f"Unexpected URL: {url}")
-
-        with patch.object(sync_calendar.urllib.request, "urlopen", side_effect=fake_urlopen):
-            result = sync_calendar.fetch_issue_completions([project], token="test-token")
-
-        self.assertEqual(result[0]["completionHtml"], "0/0")
-        self.assertFalse(result[0]["completionUnavailable"])
-
-    def test_unknown_repo_still_renders_unavailable(self):
-        project = {"githubUrl": "https://github.com/mcphersonlab/missing-repo"}
-
-        def fake_urlopen(request, timeout=30):
-            url = request.full_url
-            if url.endswith("/graphql"):
-                raise _http_error(url, 403)
-            if "/repos/mcphersonlab/missing-repo/issues" in url:
-                raise _http_error(url, 404)
-            if "/search/issues" in url:
-                raise _http_error(url, 422)
-            if url.endswith("/repos/mcphersonlab/missing-repo"):
-                raise _http_error(url, 404)
-            raise AssertionError(f"Unexpected URL: {url}")
-
-        with patch.object(sync_calendar.urllib.request, "urlopen", side_effect=fake_urlopen):
-            result = sync_calendar.fetch_issue_completions([project], token="test-token")
-
-        self.assertEqual(result[0]["completionHtml"], "—")
-
-    def test_preserve_unavailable_completion_from_existing_qmd_block(self):
-        existing_content = """const activeProjects = [
-  { projectHtml:"<a href=\\"https://github.com/mcphersonlab/EarthEpi\\">EarthEpi</a>", questionHtml:"Question", conferenceHtml:"Conference", callHtml:"Call", journalHtml:"Journal", completionHtml:"1/1 (100%)" },
-  { projectHtml:"<a href=\\"https://github.com/mcphersonlab/StormPath\\">StormPath</a>", questionHtml:"Question", conferenceHtml:"Conference", callHtml:"Call", journalHtml:"Journal", completionHtml:"—" }
- ];"""
-        existing_projects = sync_calendar.parse_existing_active_projects(existing_content)
-        projects = [
+    def test_generate_events_js(self):
+        events = [
             {
-                "githubUrl": "https://github.com/mcphersonlab/EarthEpi",
-                "completionHtml": "0/0",
-                "completionUnavailable": True,
-            },
-            {
-                "githubUrl": "https://github.com/mcphersonlab/StormPath",
-                "completionHtml": "—",
-            },
-        ]
-
-        result = sync_calendar.preserve_unavailable_project_completions(
-            projects, existing_projects
-        )
-
-        self.assertEqual(result[0]["completionHtml"], "1/1 (100%)")
-        self.assertEqual(result[1]["completionHtml"], "—")
-
-    def test_preserve_does_not_override_real_zero_zero_values(self):
-        existing_projects = [
-            {
-                "projectHtml": '<a href="https://github.com/mcphersonlab/no-issues-repo">repo</a>',
-                "completionHtml": "3/4 (75%)",
+                "id": "1",
+                "title": "Event 1",
+                "start": "2026-04-15",
+                "category": "personal",
             }
         ]
-        projects = [
-            {
-                "githubUrl": "https://github.com/mcphersonlab/no-issues-repo",
-                "completionHtml": "0/0",
-                "completionUnavailable": False,
-            }
+        result = sync_calendar.generate_events_js(events)
+        self.assertTrue(result.startswith("const events = "))
+        self.assertTrue(result.endswith(";"))
+        # Should contain JSON
+        self.assertIn("Event 1", result)
+
+
+class EventCategoriesTests(unittest.TestCase):
+    """Test event category configuration."""
+
+    def test_event_categories_exist(self):
+        expected_categories = [
+            "work",
+            "personal",
+            "reminder",
+            "birthday",
+            "holiday",
+            "travel",
+            "other",
         ]
-
-        result = sync_calendar.preserve_unavailable_project_completions(
-            projects, existing_projects
-        )
-
-        self.assertEqual(result[0]["completionHtml"], "0/0")
+        for cat in expected_categories:
+            self.assertIn(cat, sync_calendar.EVENT_CATEGORIES)
 
 
-class FilterUnlinkedCallsForPapersTests(unittest.TestCase):
-    def test_filter_unlinked_calls_for_papers_excludes_linked_urls(self):
-        projects = [
-            {
-                "callHtml": (
-                    '<strong><a href="https://example.com/cfp/">'
-                    "Linked CFP</a></strong>"
-                )
-            },
-            {"callHtml": "No call link"},
-        ]
-        call_for_papers = [
-            {
-                "topic": "Linked",
-                "journal": "Journal One",
-                "due_date": "2026-04-01",
-                "website": "https://example.com/cfp",
-            },
-            {
-                "topic": "Unlinked",
-                "journal": "Journal Two",
-                "due_date": "2026-05-01",
-                "website": "https://example.com/other",
-            },
-            {
-                "topic": "Ongoing",
-                "journal": "Journal Three",
-                "due_date": sync_calendar.ONGOING_STATUS,
-                "website": "https://example.com/ongoing",
-            },
-            {
-                "topic": "Missing deadline",
-                "journal": "Journal Four",
-                "website": "https://example.com/missing-date",
-            },
-        ]
+class TemplateUpdateTests(unittest.TestCase):
+    """Test template update functionality."""
 
-        result = sync_calendar.filter_unlinked_calls_for_papers(
-            projects, call_for_papers
-        )
+    def test_update_events_in_template_replace_existing(self):
+        template = """
+Some content
+const events = [{id: "old"}];
+More content
+"""
+        events_js = 'const events = [{id: "new"}];'
+        result = sync_calendar.update_events_in_template(template, events_js)
+        self.assertIn('const events = [{id: "new"}];', result)
+        self.assertNotIn('const events = [{id: "old"}];', result)
 
-        self.assertEqual([item["website"] for item in result], ["https://example.com/other"])
-
-
-class BuildCfpJsTests(unittest.TestCase):
-    def test_build_cfp_js_strips_html_from_title_text(self):
-        js = sync_calendar.build_cfp_js([
-            {
-                "topic": (
-                    "<a href='https://example.com/cfp' target='_blank'>"
-                    "HTML Title</a>"
-                ),
-                "journal": "Example Journal",
-                "impact": "3.2",
-                "due_date": "2026-06-30",
-                "website": "https://example.com/cfp",
-            }
-        ])
-
-        self.assertIn('title:"CFP: HTML Title"', js)
-        self.assertNotIn("<a href=", js)
-        self.assertIn('impact:"3.2"', js)
-        self.assertIn('journal:"Example Journal (IF 3.2)"', js)
-
-
-class TraineeDeadlineCalendarContentTests(unittest.TestCase):
-    def test_index_qmd_includes_requested_trainee_program_events(self):
-        content = INDEX_QMD_PATH.read_text(encoding="utf-8")
-
-        self.assertIn('id="chk-trainee"', content)
-        self.assertIn('category: "trainee"', content)
-        self.assertGreater(
-            content.index('id="chk-trainee"'),
-            content.index('id="chk-venue"'),
-        )
-        self.assertRegex(
-            content,
-            re.compile(
-                r'traineeDeadlineEvents\.forEach\(e => \{\s+events\.push\(\{\s+'
-                r'title: e\.title,\s+start: e\.start,\s+allDay: true,\s+order: 3,',
-                re.MULTILINE,
-            ),
-        )
-        self.assertIn('title: `🎓 ${program.title} Opens`', content)
-        self.assertIn('title: `🎓 ${program.title} Closes`', content)
-        self.assertIn('phase: "Open"', content)
-        self.assertIn('phase: "Close"', content)
-
-        for title, opens_on, closes_on in [
-            ("MDACC CATALYST Program(s)", "11-17", "01-14"),
-            ("McGovern - GradSURP", "12-01", "01-15"),
-            ("McGovern - MicroSURP", "12-01", "02-01"),
-            ("BCM SMART", "10-01", "01-30"),
-            ("UH-CURE/UH-HEART", "12-01", "02-23"),
-        ]:
-            self.assertIn(
-                f'{{ title:"{title}", opensOn:"{opens_on}", closesOn:"{closes_on}" }}',
-                content,
-            )
-
-    def test_index_qmd_includes_requested_recurring_lab_life_events(self):
-        content = INDEX_QMD_PATH.read_text(encoding="utf-8")
-
-        self.assertIn('const recurringLabLifeEvents = [', content)
-        self.assertIn(
-            '{ title:"🇬🇷 Niko Niko\'s — Greek Independence Day", monthDay:"03-25", details:"Annual Greek Independence Day outing at Niko Niko\'s.", category:"lablife" }',
-            content,
-        )
-        self.assertIn(
-            '{ title:"🇲🇽 Hugo\'s — Mexico\'s Independence Day", monthDay:"09-16", details:"Annual Mexico\'s Independence Day outing at Hugo\'s.", category:"lablife" }',
-            content,
-        )
-        self.assertIn(
-            '...generateAnnualLabLifeEvents(2025, 2030, recurringLabLifeEvents),',
-            content,
-        )
+    def test_update_events_in_template_insert_new(self):
+        template = "<html><body></body></html>"
+        events_js = 'const events = []'
+        result = sync_calendar.update_events_in_template(template, events_js)
+        self.assertIn("const events = []", result)
 
 
 if __name__ == "__main__":

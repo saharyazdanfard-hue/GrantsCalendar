@@ -3,17 +3,17 @@ project:
   output-dir: _site
 
 website:
-  title: "McPherson Lab Calendar"
+  title: "Personal Calendar"
   favicon: ""
   navbar:
     background: primary
-    title: "🔬 McPherson Lab Calendar"
+    title: "📅 My Calendar"
     right:
       - icon: github
-        href: https://github.com/mcphersonlab/operations
+        href: https://github.com
         aria-label: GitHub
   page-footer:
-    left: "© McPherson Lab"
+    left: "© 2026 Personal Calendar"
     right: "Built with [Quarto](https://quarto.org)"
 
 format:
@@ -22,3 +22,4 @@ format:
     css: styles.css
     toc: false
     page-layout: full
+

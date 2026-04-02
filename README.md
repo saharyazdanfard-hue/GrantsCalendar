@@ -1,53 +1,80 @@
-# McPherson Lab - Internal Business Operations
+# Personal Calendar
 
-This repository contains financial planning and business operations documentation for the McPherson Lab across two distinct operational stages.
+A comprehensive personal calendar management system that aggregates events from multiple sources and presents them in an interactive web interface.
 
-## Business Stages
+## Features
 
-This documentation covers two operational stages of McPherson Lab:
+- 📅 **Interactive Calendar View**: Powered by FullCalendar for an intuitive browsing experience
+- 🎯 **Multi-source Support**: Aggregate events from various calendar sources
+- 📋 **Agenda Panel**: See today's events and upcoming tasks at a glance
+- 🏷️ **Event Categorization**: Organize events by type (work, personal, reminders, etc.)
+- 📱 **Responsive Design**: Works seamlessly on desktop and mobile devices
+- 🔄 **Automated Sync**: Keep your calendar up-to-date with automatic data synchronization
 
-### 🌱 [Startup Stage](startup-calculator.py)
-Solo PI operation with minimal overhead, building foundational revenue streams through newsletters, CE courses, and workshops. **No salary**, focusing on establishing market presence and generating initial revenue.
+## Quick Start
 
-### 🚀 [Operation Stage](#operation-stage) (Current Section)
-Full-scale operation with 9 trainees plus PI, each managing dedicated newsletters with comprehensive compensation packages and revenue sharing model.
+### File Structure
 
----
+```
+calendar/
+├── index.qmd          # Main calendar UI (Quarto document)
+├── _quarto.yml        # Quarto project configuration
+├── styles.css         # Custom styling
+└── sync_calendar.py   # Data synchronization script
+```
 
-# Operation Stage
+### Setup
 
-## Overview
+1. **Configure your calendar sources** in `sync_calendar.py`
+2. **Run the sync script** to populate calendar data:
+   ```bash
+   python calendar/sync_calendar.py
+   ```
+3. **Build and view** the calendar:
+   ```bash
+   quarto render calendar/index.qmd
+   ```
 
-The McPherson Lab employs trainees with an innovative compensation model: a guaranteed base package that covers all essential needs plus 90/10 revenue sharing that creates realistic productivity expectations while rewarding high performance.
+### Configuration
 
-## Compensation Model
+Edit `calendar/sync_calendar.py` to:
+- Add your calendar sources (Google Calendar, Outlook, ICS files, etc.)
+- Define event categories and colors
+- Set update frequency and data transformations
 
-### Base Package (Guaranteed): $70,800/year
-- **Max Tax-Advantaged Savings**: $34,800
-  - HSA: $4,300 (2026 max for individual)
-  - 403(b): $23,500 (2026 max)
-  - Roth IRA: $7,000 (2026 max)
-- **Rent Allowance**: $24,000 ($2,000/month)
-- **Incidentals**: $12,000 (food, transportation, etc.)
+## Event Format
 
-### Plus: 90/10 Revenue Sharing
-Lab receives **90% of revenue** to cover operational costs.
-Trainees receive **10% of all revenue they generate** through their Substack newsletters.
+Events are stored as JavaScript objects with the following structure:
 
-**Example**: A trainee who generates $200,000 in newsletter revenue receives:
-- Base package: $70,800 (value of benefits and stipends)
-- Revenue share: $20,000 (10% of $200,000)
-- **Total compensation**: $90,800
+```javascript
+{
+  id: "event-unique-id",
+  title: "Event Title",
+  start: "2026-04-02T10:00:00",
+  end: "2026-04-02T11:00:00",
+  category: "work",
+  description: "Event details",
+  url: "https://example.com"
+}
+```
 
-**Breakeven**: Lab breaks even at ~$115k revenue per trainee (90% = $103k covers costs).
+## Development
 
-This model ensures all trainees have their essential needs met while creating realistic productivity expectations that allow the lab to be profitable.
+### Testing
 
-## Contents
+Run the test suite:
+```bash
+python -m pytest tests/
+```
 
-### 📄 Documentation
+### Building
 
-1. **[Compensation Analysis](compensation-analysis.md)**
+Build the calendar for deployment:
+```bash
+quarto render calendar/index.qmd
+```
+
+The output will be in `calendar/_site/`.
    - Base package breakdown ($70,800 value)
    - Tax-advantaged savings maximization
    - 90/10 revenue sharing model

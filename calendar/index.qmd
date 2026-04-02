@@ -7,7 +7,47 @@ format:
           <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
 ---
 
+# 📅 Personal Calendar
+
+Welcome to your personal calendar. This calendar aggregates events from multiple sources into a single interactive view.
+
+
+
 ::: {.calendar-wrap}
+<div id="calendar" style="height: 600px;"></div>
+:::
+
+```{=html}
+<script>
+// Initialize events from sync_calendar.py
+const events = [];
+
+// Initialize FullCalendar
+document.addEventListener("DOMContentLoaded", function(){
+  const calEl = document.getElementById("calendar");
+  if (typeof FullCalendar === "undefined") {
+    calEl.innerHTML = "<p style='color: red;'>Calendar library not loaded</p>";
+    return;
+  }
+  
+  const calendar = new FullCalendar.Calendar(calEl, {
+    initialView: "dayGridMonth",
+    initialDate: new Date().toISOString().slice(0,10),
+    height: "auto",
+    headerToolbar: {
+      left: "prev,next today",
+      center: "title",
+      right: "dayGridMonth,timeGridWeek,listMonth"
+    },
+    events: events,
+    eventDisplay: "block",
+    nowIndicator: true
+  });
+  
+  calendar.render();
+});
+</script>
+```
 
 <div class="calendar-layout">
 <div class="calendar-sidebar calendar-sidebar-left" role="complementary" aria-labelledby="agenda-title">
