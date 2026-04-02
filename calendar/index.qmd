@@ -20,7 +20,16 @@ Welcome to your personal calendar. This calendar aggregates events from multiple
 ```{=html}
 <script>
 // Initialize events from sync_calendar.py
-const events = [];
+const events = [
+  {
+    "id": "sample-1",
+    "title": "Sample Event",
+    "start": "2026-04-15T10:00:00",
+    "end": "2026-04-15T11:00:00",
+    "category": "personal",
+    "description": "This is a sample event. Replace with your calendar data."
+  }
+];
 
 // Initialize FullCalendar
 document.addEventListener("DOMContentLoaded", function(){
@@ -457,7 +466,16 @@ function monthDayToParts(monthDay) {
 }
 
 function generateTraineeDeadlineEvents(startYear, endYear) {
-  const events = [];
+  const events = [
+  {
+    "id": "sample-1",
+    "title": "Sample Event",
+    "start": "2026-04-15T10:00:00",
+    "end": "2026-04-15T11:00:00",
+    "category": "personal",
+    "description": "This is a sample event. Replace with your calendar data."
+  }
+];
   for (let year = startYear; year <= endYear; year++) {
     traineeDeadlinePrograms.forEach(program => {
       const opensOn = monthDayToParts(program.opensOn);
@@ -660,7 +678,16 @@ const activeProjects = [
 // Media Day: Winter (January 15) and Summer (July 15), generated
 // programmatically for all years in the calendar range
 function generateMediaDay(startYear, endYear) {
-  const events = [];
+  const events = [
+  {
+    "id": "sample-1",
+    "title": "Sample Event",
+    "start": "2026-04-15T10:00:00",
+    "end": "2026-04-15T11:00:00",
+    "category": "personal",
+    "description": "This is a sample event. Replace with your calendar data."
+  }
+];
   for (let year = startYear; year <= endYear; year++) {
     events.push({ title:"🎬 Media Day (Winter)", start:`${year}-01-15`, end:`${year}-01-16`, details:`Bi-annual lab media day — Winter edition. Photo, video, and communications update.`, category:"lablife" });
     events.push({ title:"🎬 Media Day (Summer)", start:`${year}-07-15`, end:`${year}-07-16`, details:`Bi-annual lab media day — Summer edition. Photo, video, and communications update.`, category:"lablife" });
@@ -668,7 +695,16 @@ function generateMediaDay(startYear, endYear) {
   return events;
 }
 function generateAnnualLabLifeEvents(startYear, endYear, recurringEvents) {
-  const events = [];
+  const events = [
+  {
+    "id": "sample-1",
+    "title": "Sample Event",
+    "start": "2026-04-15T10:00:00",
+    "end": "2026-04-15T11:00:00",
+    "category": "personal",
+    "description": "This is a sample event. Replace with your calendar data."
+  }
+];
   for (let year = startYear; year <= endYear; year++) {
     recurringEvents.forEach(event => {
       const { monthDay, ...eventProps } = event;
@@ -722,7 +758,16 @@ const venueStatic = [
 
 // ── Helper: generate weekly events (e.g. Run Club, Happy Hour) ──
 function generateWeekly(title, dayOfWeek, startISO, endISO, details, category, meta = {}) {
-  const events = [];
+  const events = [
+  {
+    "id": "sample-1",
+    "title": "Sample Event",
+    "start": "2026-04-15T10:00:00",
+    "end": "2026-04-15T11:00:00",
+    "category": "personal",
+    "description": "This is a sample event. Replace with your calendar data."
+  }
+];
   let cur = new Date(startISO + "T00:00:00");
   const endDate = new Date(endISO + "T00:00:00");
   // Advance to first matching weekday
@@ -739,7 +784,16 @@ function generateWeekly(title, dayOfWeek, startISO, endISO, details, category, m
 
 // ── Helper: generate monthly venue events (cycling through venues) ──
 function generateMonthlyVenues(venueList, startISO, endISO) {
-  const events = [];
+  const events = [
+  {
+    "id": "sample-1",
+    "title": "Sample Event",
+    "start": "2026-04-15T10:00:00",
+    "end": "2026-04-15T11:00:00",
+    "category": "personal",
+    "description": "This is a sample event. Replace with your calendar data."
+  }
+];
   const endDate = new Date(endISO + "T00:00:00");
   let cur = new Date(startISO + "T00:00:00");
   cur.setDate(1); // start of month
@@ -815,7 +869,16 @@ const normalizeUrl = (url) => {
 };
 
 function buildAllEvents() {
-  const events = [];
+  const events = [
+  {
+    "id": "sample-1",
+    "title": "Sample Event",
+    "start": "2026-04-15T10:00:00",
+    "end": "2026-04-15T11:00:00",
+    "category": "personal",
+    "description": "This is a sample event. Replace with your calendar data."
+  }
+];
 
   // Conferences — blue
   const abstractEvents = [];
